@@ -5,6 +5,7 @@ import Footer from "../components/Footer";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../api/auth/[...nextauth]/route";
 import { Toaster } from "react-hot-toast";
+import Head from "next/head";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,13 +17,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// SEO Metadata
 export const metadata = {
-  title: "Anesthesia Academy",
-  description: `Anesthesia Academy is a premier institution dedicated to advancing knowledge and skills in the field of anesthesiology. Our mission is to provide high-quality education, hands-on training, and cutting-edge resources for medical professionals, students, and aspiring anesthetists.
-
-With a curriculum designed by leading experts, we offer comprehensive courses covering general anesthesia, regional techniques, pain management, and patient safety. Whether you are a beginner or an experienced practitioner, Anesthesia Academy equips you with the latest advancements and best practices to excel in the evolving world of anesthesiology.
-
-Join us and take your expertise to the next level!`,
+  title: "Anesthesia Academy - Advanced Anesthesia Training",
+  description:
+    "Anesthesia Academy provides expert-led courses in anesthesiology. Enhance your skills with hands-on training in general anesthesia, regional techniques, and patient safety.",
+  keywords:
+    "anesthesia training, anesthesiology courses, pain management, anesthesia techniques, medical education",
+  author: "Anesthesia Academy",
+  siteUrl: "https://anesthesia-academy.com",
+  image: "https://anesthesia-academy.com/og-image.jpg",
 };
 
 export default async function RootLayout({ children }) {
@@ -30,13 +34,43 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang="en" className="scroll-smooth">
+      <Head>
+        {/* Primary Meta Tags */}
+        <title>{metadata.title}</title>
+        <meta name="description" content={metadata.description} />
+        <meta name="keywords" content={metadata.keywords} />
+        <meta name="author" content={metadata.author} />
+        <meta name="robots" content="index, follow" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+        {/* Open Graph (Facebook & LinkedIn) */}
+        <meta property="og:title" content={metadata.title} />
+        <meta property="og:description" content={metadata.description} />
+        <meta property="og:image" content={metadata.image} />
+        <meta property="og:url" content={metadata.siteUrl} />
+        <meta property="og:type" content="website" />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={metadata.title} />
+        <meta name="twitter:description" content={metadata.description} />
+        <meta name="twitter:image" content={metadata.image} />
+
+        {/* Canonical URL */}
+        <link rel="canonical" href={metadata.siteUrl} />
+
+        {/* Favicon */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      </Head>
+
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Toaster />
         <Navbar session={session} />
 
-        <main className="">{children}</main>
+        <main>{children}</main>
         <Footer />
       </body>
     </html>
