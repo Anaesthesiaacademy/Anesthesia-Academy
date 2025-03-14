@@ -26,7 +26,7 @@ export const metadata = {
     "anesthesia training, anesthesiology courses, pain management, anesthesia techniques, medical education",
   author: "Anesthesia Academy",
   siteUrl: "https://anesthesia-academy.com",
-  image: "https://anesthesia-academy.com/og-image.jpg",
+  image: "https://anesthesia-academy.com/logo.png",
 };
 
 export default async function RootLayout({ children }) {

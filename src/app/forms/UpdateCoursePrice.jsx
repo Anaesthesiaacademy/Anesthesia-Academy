@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import { updatePrice } from "../actions/pageActions";
+import Link from "next/link";
 
 export default function UpdateCoursePrice({ courseId, coursePrice }) {
   const { register, handleSubmit, reset } = useForm({
@@ -18,7 +19,6 @@ export default function UpdateCoursePrice({ courseId, coursePrice }) {
     try {
       const response = await updatePrice(courseId, data.price);
 
-      
       if (response.success) {
         toast.success(response.message);
         reset(); // Reset form after success
@@ -44,14 +44,23 @@ export default function UpdateCoursePrice({ courseId, coursePrice }) {
           placeholder="Enter new price"
         />
       </label>
-
-      <button
-        type="submit"
-        className={`px-4 py-2 w-full bg-blue-600 text-white rounded ${loading && "opacity-50 cursor-not-allowed"}`}
-        disabled={loading}
-      >
-        {loading ? "Updating..." : "Update Price"}
-      </button>
+      <div className="flex">
+        <button
+          type="submit"
+          className={`px-4 py-2 rounded-r-none w-full bg-blue-600 text-white rounded ${
+            loading && "opacity-50 cursor-not-allowed"
+          }`}
+          disabled={loading}
+        >
+          {loading ? "Updating..." : "Update Price"}
+        </button>
+        <Link
+          href={`/course/${courseId}`}
+          className="bg-[#2196f3] inline-block text-lg text-center transition-colors hover:bg-blue-400 text-white w-full py-3 px-4"
+        >
+          Start Learning
+        </Link>
+      </div>
     </form>
   );
 }

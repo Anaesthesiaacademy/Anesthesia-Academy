@@ -263,7 +263,7 @@ export default function ShowCourse({ id, userSession, userData }) {
 
           {Object.keys(video).length ? (
             <>
-              {/* <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3">
                 <h2 className="text-lg font font-semibold">
                   {video?.snippet?.title}
                 </h2>
@@ -278,8 +278,8 @@ export default function ShowCourse({ id, userSession, userData }) {
                   title="YouTube Video"
                   allowFullScreen
                 ></iframe>
-              </div> */}
-              <VideoPlayer video={video} />
+              </div>
+              {/* <VideoPlayer video={video} /> */}
             </>
           ) : null}
         </div>
