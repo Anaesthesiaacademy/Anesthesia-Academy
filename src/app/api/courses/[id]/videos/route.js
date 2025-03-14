@@ -51,7 +51,7 @@ export async function GET(req, { params }) {
 
   try {
     const response = await axios.get(
-      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${currentCourse["playlistId"]}&key=${API_KEY}`
+      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${currentCourse["playlistId"]}&key=${API_KEY}&maxResults=50`
     );
 
     if (response.status !== 200) {
