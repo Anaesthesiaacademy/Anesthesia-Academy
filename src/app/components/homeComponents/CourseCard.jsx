@@ -6,6 +6,7 @@ import { FaBook } from "react-icons/fa";
 import UpdateCoursePrice from "../../forms/UpdateCoursePrice";
 
 export default function CourseCard({ course, role, dateDistance }) {
+  
   return (
     <div className="shadow-lg rounded-2xl hover:shadow-2xl hover:-translate-y-1 transition-all overflow-clip flex flex-col">
       {

@@ -5,6 +5,7 @@ import { authOptions } from "../api/auth/[...nextauth]/route";
 import connectToDatabase from "../lib/connectToDb";
 import Course from "../models/Course";
 import clientPromise from "../lib/mongoClient";
+import Order from "../models/Order";
 
 const API_KEY = process.env.YOUTUBE_API_KEY;
 const CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
@@ -121,23 +122,36 @@ export async function removeCourses() {
     const youtubePlaylists = response.data.items;
     const youtubePlaylistIds = youtubePlaylists.map((playlist) => playlist.id);
 
-    const storedCourses = await Course.find({}, "playlistId");
+    const storedCourses = await Course.find({}, "playlistId").lean();;
 
     const coursesToDelete = storedCourses.filter(
       (course) => !youtubePlaylistIds.includes(course.playlistId)
     );
 
     if (coursesToDelete.length > 0) {
-      const courseIdsToDelete = coursesToDelete.map(
-        (course) => course.playlistId
+      
+      const { courseIdsToDelete, playlistIdsToDeleteConfirmed } = coursesToDelete.reduce(
+        (acc, course) => {
+          acc.courseIdsToDelete.push(course._id);
+          acc.playlistIdsToDeleteConfirmed.push(course.playlistId);
+          return acc;
+        },
+        { courseIdsToDelete: [], playlistIdsToDeleteConfirmed: [] }
       );
-      await Course.deleteMany({ playlistId: { $in: courseIdsToDelete } });
+    
+      await Course.deleteMany({ playlistId: { $in: playlistIdsToDeleteConfirmed } });
+    
+      await Order.updateMany(
+        { courseId: { $in: courseIdsToDelete } },
+        { $set: { status: "deleted" } }
+      );
     }
+
 
     return {
       success: true,
       message: `${coursesToDelete.length} courses removed.`,
-      removedCourses: coursesToDelete,
+      // removedCourses: coursesToDelete,
     };
   } catch (error) {
     console.log(error);
