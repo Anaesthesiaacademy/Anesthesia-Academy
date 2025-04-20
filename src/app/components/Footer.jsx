@@ -16,10 +16,10 @@ export default function Footer() {
         <div className="w-1/3">
           <div className="mb-3 text-lg font-semibold">Quick Links</div>
           <div className="flex flex-col gap-1">
-            <Link href="#">Home</Link>
-            <Link href="#">About</Link>
-            <Link href="#">Contact</Link>
-            <Link href="#">Courses</Link>
+            <Link href="/#">Home</Link>
+            <Link href="/about">About</Link>
+            <Link href="/#contact">Contact</Link>
+            <Link href="/#courses">Courses</Link>
           </div>
         </div>
         <div className="w-1/3">

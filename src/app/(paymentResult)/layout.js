@@ -65,7 +65,7 @@ export default async function RootLayout({ children }) {
 
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Navbar session={session} />
-        <main>{children}</main>
+        <main className="min-h-screen flex justify-center items-center">{children}</main>
         <Footer />
       </body>
     </html>

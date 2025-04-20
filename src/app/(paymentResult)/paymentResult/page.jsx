@@ -7,7 +7,7 @@ export default async function PaymentResult({ searchParams }) {
 
   return (
     <>
-      <div className="text-center absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full">
+      <div className="text-center w-full">
         <h1 className="text-4xl font-bold">Payment Result</h1>
         {params.success === "true" && params.error_occured === "false" ? (
           <div className="flex flex-col items-center justify-center">
