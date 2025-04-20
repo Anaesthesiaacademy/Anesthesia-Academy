@@ -14,7 +14,9 @@ export default function Navbar({ session }) {
     { name: "Home", href: "#home" },
     { name: "Courses", href: "#courses" },
     { name: "Contact", href: "#contact" },
-    { name: "About", href: "#about" },
+    { name: "About", href: "/about-us" },
+    { name: "Terms & Conditions", href: "/terms" },
+    { name: "Privacy Policy", href: "/privacy" },
     // { name: "Sign Up", href: "/sign-up" },
   ];
   // const pcLinks = [
