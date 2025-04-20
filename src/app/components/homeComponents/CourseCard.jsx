@@ -1,19 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
-import { BsFillClockFill } from "react-icons/bs";
+import { IoIosPricetag } from "react-icons/io";
+
 import { FaBook } from "react-icons/fa";
 import UpdateCoursePrice from "../../forms/UpdateCoursePrice";
 
 export default function CourseCard({ course, role, dateDistance }) {
-  
   return (
     <div className="shadow-lg rounded-2xl hover:shadow-2xl hover:-translate-y-1 transition-all overflow-clip flex flex-col">
-      {
-        dateDistance && (
-          <p className="text-sm md:text-base text-slate-600 px-4 py-2"  >Course exp in: <span>{dateDistance} / 3 months</span></p>
-        )
-      }
+      {dateDistance && (
+        <p className="text-sm md:text-base text-slate-600 px-4 py-2">
+          Course exp in: <span>{dateDistance} / 3 months</span>
+        </p>
+      )}
       <div className="w-full h-[210px] overflow-clip">
         <Image
           src={
@@ -37,18 +37,22 @@ export default function CourseCard({ course, role, dateDistance }) {
           </p>
         </div>
         {role === "admin" ? (
-          <UpdateCoursePrice courseId={course?._id} coursePrice={course?.price} />
+          <UpdateCoursePrice
+            courseId={course?._id}
+            coursePrice={course?.price}
+          />
         ) : (
           <div>
             <div className="flex gap-4 py-5 mx-4 border-t">
               <div className="flex gap-1 items-center">
-                <BsFillClockFill color="#2196f3" /> 12 Weeks
+                <IoIosPricetag color="#2196f3" /> {course?.price} EGP
               </div>
               <div className="flex gap-1 items-center">
                 {" "}
                 <FaBook color="#2196f3" /> {course?.count} Lessons
               </div>
             </div>
+
             <div>
               <Link
                 href={`/course/${course?._id}`}
