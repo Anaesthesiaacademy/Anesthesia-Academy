@@ -11,9 +11,9 @@ export default function Navbar({ session }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const links = [
-    { name: "Home", href: "#home" },
-    { name: "Courses", href: "#courses" },
-    { name: "Contact", href: "#contact" },
+    { name: "Home", href: "/#home" },
+    { name: "Courses", href: "/#courses" },
+    { name: "Contact", href: "/#contact" },
     { name: "About", href: "/about-us" },
     { name: "Terms & Conditions", href: "/terms" },
     { name: "Privacy Policy", href: "/privacy" },
