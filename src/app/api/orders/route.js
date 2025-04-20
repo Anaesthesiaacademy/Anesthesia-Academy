@@ -16,7 +16,7 @@ try {
   const paymentKey = await getPaymentKey(token, orderId, amount, userData);
   
   // Step 4: Redirect user to Paymob payment page
-  const paymentUrl = `https://accept.paymob.com/api/acceptance/iframes/900094?payment_token=${paymentKey}`;
+  const paymentUrl = `https://accept.paymob.com/api/acceptance/iframes/906700?payment_token=${paymentKey}`;
 
   return NextResponse.json({ success: true, message: 'Payment initiated successfully', data: paymentUrl }, { status: 200 });
 } catch (error) {
