@@ -2,28 +2,36 @@ import { NextResponse } from "next/server";
 import { createOrder, getAuthToken, getPaymentKey } from "@/src/app/lib/paymob";
 
 export async function POST(req) {
+  try {
+    const { amount, courseId, userId, userData } = await req.json();
 
-try {
-  const { amount, courseId, userId, userData } = await req.json();
+    // Step 1: Get authentication token
+    const token = await getAuthToken();
 
-  // Step 1: Get authentication token
-  const token = await getAuthToken();
+    // Step 2: Create an order
+    const orderId = await createOrder(token, amount, userId, courseId);
 
-  // Step 2: Create an order
-  const orderId = await createOrder(token, amount, userId, courseId);
-  
-  // Step 3: Generate payment key
-  const paymentKey = await getPaymentKey(token, orderId, amount, userData);
-  
-  // Step 4: Redirect user to Paymob payment page
-  console.log("paymentKey this is for debug", paymentKey);
-  
-  const paymentUrl = `https://accept.paymob.com/api/acceptance/iframes/906700?payment_token=${paymentKey}`;
+    // Step 3: Generate payment key
+    const paymentKey = await getPaymentKey(token, orderId, amount, userData);
 
-  return NextResponse.json({ success: true, message: 'Payment initiated successfully', data: paymentUrl }, { status: 200 });
-} catch (error) {
-  console.error(error);
-  return NextResponse.json({ success: false, message: error.message || 'Payment initiation failed' }, { status: 500 });
-}
+    // Step 4: Redirect user to Paymob payment page
+    console.log("paymentKey this is for debug", paymentKey);
 
+    const paymentUrl = `https://accept.paymob.com/api/acceptance/iframes/${process.env.PAYMOB_IFRAME_ID}?payment_token=${paymentKey}`;
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Payment initiated successfully",
+        data: paymentUrl,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { success: false, message: error.message || "Payment initiation failed" },
+      { status: 500 }
+    );
+  }
 }

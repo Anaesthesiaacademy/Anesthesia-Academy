@@ -1,5 +1,6 @@
 // utils/paymob.js
 const axios = require("axios");
+const { redirect } = require("next/dist/server/api-utils");
 
 const PAYMOB_API_KEY = process.env.PAYMOB_API_KEY;
 const PAYMOB_AUTH_URL = process.env.PAYMOB_AUTH_URL;
@@ -99,7 +100,7 @@ async function getPaymentKey(token, orderId, amount, userData) {
       },
       currency: "EGP",
       integration_id: PAYMOB_INTEGRATION_ID, // Your Paymob integration ID
-      redirect_url: "https://anesthesia-academy.vercel.app/paymentResult",
+      redirect_url: `${process.env.NEXT_PUBLIC_BASE_URL}/paymentResult`,
     });
 
     console.log("✅ Payment Key Generated Successfully:", response.data.token);
