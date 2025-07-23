@@ -21,8 +21,7 @@ export default function ShowCourse({ id, userSession, userData }) {
   const router = useRouter();
 
   const buyCourse = async () => {
-
-    if(!userData){
+    if (!userData) {
       router.push("/dashboard/settings");
       return;
     }
@@ -35,7 +34,7 @@ export default function ShowCourse({ id, userSession, userData }) {
         userId: userSession?.id,
       });
       toast.success(response.data.message);
-      window.open(response.data.data);
+      window.location.href = response.data.data;
       // return response;
     } catch (error) {
       console.log(error);
@@ -86,7 +85,6 @@ export default function ShowCourse({ id, userSession, userData }) {
     }
   }, []);
 
-
   // ⬇️ Render Content After Loading
   if (!userSession) {
     return (
@@ -110,22 +108,21 @@ export default function ShowCourse({ id, userSession, userData }) {
     );
   }
 
-    // ⬇️ Show Loading Skeleton While Fetching Data
-    if (loading) {
-      return (
-        <div className="flex justify-center items-center min-h-screen bg-gray-100">
-          <div className="w-4/5">
-            <div className="animate-pulse space-y-6">
-              <div className="h-6 bg-gray-300 rounded w-2/5 mx-auto"></div>
-              <div className="h-4 bg-gray-300 rounded w-3/5 mx-auto"></div>
-              <div className="h-80 bg-gray-300 rounded w-full"></div>
-              <div className="h-4 bg-gray-300 rounded w-4/5 mx-auto"></div>
-            </div>
+  // ⬇️ Show Loading Skeleton While Fetching Data
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-100">
+        <div className="w-4/5">
+          <div className="animate-pulse space-y-6">
+            <div className="h-6 bg-gray-300 rounded w-2/5 mx-auto"></div>
+            <div className="h-4 bg-gray-300 rounded w-3/5 mx-auto"></div>
+            <div className="h-80 bg-gray-300 rounded w-full"></div>
+            <div className="h-4 bg-gray-300 rounded w-4/5 mx-auto"></div>
           </div>
         </div>
-      );
-    }
-  
+      </div>
+    );
+  }
 
   if (response?.data?.success === false) {
     return (
@@ -202,10 +199,10 @@ export default function ShowCourse({ id, userSession, userData }) {
             />
           </div>
           <div className="w-full flex justify-between items-center">
-          <p className="text-center text-sm md:text-lg text-nowrap font-bold md:block flex justify-between items-center px-4">
-            Lessons: {response?.data?.data?.length}{" "}
-          </p>
-          <div className="px-4 cursor-pointer">
+            <p className="text-center text-sm md:text-lg text-nowrap font-bold md:block flex justify-between items-center px-4">
+              Lessons: {response?.data?.data?.length}{" "}
+            </p>
+            <div className="px-4 cursor-pointer">
               <IoClose
                 className="md:hidden"
                 onClick={() => setSidebarOpen(false)}
@@ -242,15 +239,14 @@ export default function ShowCourse({ id, userSession, userData }) {
       </div>
 
       <div className="ml-auto bg-gray-100 md:w-4/5 w-full text-black">
-     
-          <div className="w-fit p-2 z-50 block md:hidden">
+        <div className="w-fit p-2 z-50 block md:hidden">
           <FaArrowLeft
             onClick={() => router.back()}
             size={25}
             className="cursor-pointer text-black"
           />
         </div>
-     
+
         <div className="md:w-4/5 w-5/6 max-w-[1500px] mx-auto h-full pt-5">
           <div className="mb-5 block md:hidden">
             <button type="button">
