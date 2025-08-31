@@ -138,14 +138,18 @@ export default function ShowCourse({ id, userSession, userData }) {
               <div className="rounded-xl overflow-clip max-h-fit shadow-lg w-full md:w-2/6">
                 <Image
                   src={
-                    courseData?.thumbnail?.includes("no_thumbnail")
-                      ? "/course.jpg"
-                      : courseData.thumbnail || "/course.jpg"
+                    typeof courseData?.thumbnail === "string"
+                      ? courseData?.thumbnail?.includes("no_thumbnail")
+                        ? "/course.jpg"
+                        : courseData?.thumbnail || "/course.jpg"
+                      : `/api/upload/proxyImage?key=${encodeURIComponent(
+                          courseData?.thumbnail?.cloudId
+                        )}`
                   }
-                  className="w-full max-h-[500px] object-cover hover:scale-110 transition-transform duration-500 ease-in-out"
+                  alt={courseData?.title}
+                  className="object-cover w-full h-full"
                   width={400}
-                  height={400}
-                  alt={courseData.title || "Course"}
+                  height={250}
                 />
               </div>
               <div className="flex flex-col gap-4 justify-between w-full md:w-4/6">

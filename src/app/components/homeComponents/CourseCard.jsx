@@ -17,14 +17,17 @@ export default function CourseCard({ course, role, dateDistance }) {
       <div className="w-full h-[210px] overflow-clip">
         <Image
           src={
-            course?.thumbnail.includes("no_thumbnail")
-              ? "/course.jpg"
-              : course?.thumbnail
+            typeof course?.thumbnail === "string"
+              ? course.thumbnail.includes("no_thumbnail")
+                ? "/course.jpg"
+                : course?.thumbnail || "/course.jpg"
+              : `/api/upload/proxyImage?key=${encodeURIComponent(
+                  course?.thumbnail?.cloudId
+                )}`
           }
-          alt={course?.title}
-          width={350}
-          height={200}
-          className="w-full"
+          alt="Course Thumbnail"
+          width={400}
+          height={250}
         />
       </div>
       <div className="flex flex-col h-full justify-between">

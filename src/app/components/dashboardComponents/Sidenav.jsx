@@ -12,6 +12,16 @@ export default function Sidenav() {
     },
     {
       id: 2,
+      title: "Courses",
+      href: "/dashboard/courses",
+    },
+    {
+      id: 3,
+      title: "Videos",
+      href: "/dashboard/videos",
+    },
+    {
+      id: 4,
       title: "Settings",
       href: "/dashboard/settings",
     },

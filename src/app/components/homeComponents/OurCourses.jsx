@@ -8,6 +8,8 @@ export default function OurCourses({ session }) {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  console.log("coursess", courses);
+
   useEffect(() => {
     const fetchCourses = async () => {
       try {
@@ -40,7 +42,10 @@ export default function OurCourses({ session }) {
           {Array(6)
             .fill(null)
             .map((_, index) => (
-              <div key={index} className="animate-pulse space-y-4 p-4 border rounded-lg shadow">
+              <div
+                key={index}
+                className="animate-pulse space-y-4 p-4 border rounded-lg shadow"
+              >
                 <div className="h-48 bg-gray-300 rounded"></div>
                 <div className="h-6 bg-gray-300 rounded w-3/4"></div>
                 <div className="h-4 bg-gray-300 rounded w-1/2"></div>
