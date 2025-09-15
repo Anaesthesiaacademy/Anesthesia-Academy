@@ -4,7 +4,9 @@ import LogoutBtn from "./LogoutBtn";
 import { FaArrowLeft } from "react-icons/fa6";
 import SideNavLink from "./SideNavLink";
 
-export default function Sidenav() {
+export default function Sidenav({ session }) {
+  console.log("session", session);
+
   const links = [
     {
       id: 1,
@@ -28,6 +30,19 @@ export default function Sidenav() {
     },
   ];
 
+  const studentLinks = [
+    {
+      id: 1,
+      title: "Overview",
+      href: "/dashboard/overview",
+    },
+    {
+      id: 2,
+      title: "Settings",
+      href: "/dashboard/settings",
+    },
+  ];
+
   return (
     <aside className="bg-zinc-800 fixed w-1/5 h-screen text-white flex flex-col items-center justify-between pb-4 ">
       <div className="flex flex-col items-center w-full">
@@ -43,11 +58,11 @@ export default function Sidenav() {
             Anaesthesia Academy
           </h4>
           <div className="flex flex-col gap-4 px-3">
-            {links.map((link) => (
-              <SideNavLink link={link} key={link.id}>
-                {link.title}
-              </SideNavLink>
-            ))}
+            {session?.user?.role === "student"
+              ? studentLinks.map((link) => (
+                  <SideNavLink key={link.id} link={link} />
+                ))
+              : links.map((link) => <SideNavLink key={link.id} link={link} />)}
           </div>
         </div>
       </div>

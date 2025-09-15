@@ -10,6 +10,8 @@ export default function ShowCourse({ videos, session }) {
   const [video, setVideo] = useState(videos?.[0] || {});
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  console.log("video", video);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -85,7 +87,7 @@ export default function ShowCourse({ videos, session }) {
           {videos?.map((course) => (
             <div
               key={course?._id}
-              className={`w-11/12 rounded-lg p-3 ${course?.id === video?.id ? "bg-[#a0daff]" : "bg-white"
+              className={`w-11/12 rounded-lg p-3 ${course?._id === video?._id ? "bg-[#a0daff]" : "bg-white"
                 } cursor-pointer text-black`}
               onClick={() => setVideo(course)}
             >
@@ -99,7 +101,7 @@ export default function ShowCourse({ videos, session }) {
                 alt={course?.title}
                 width={300}
                 height={200}
-                className="w-full max-h-52 object-fit rounded"
+                className="w-full max-h-52 object-cover bg-top rounded"
               />
             </div>
           ))}
