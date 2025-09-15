@@ -8,8 +8,6 @@ export default function OurCourses({ session }) {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  console.log("coursess", courses);
-
   useEffect(() => {
     const fetchCourses = async () => {
       try {
