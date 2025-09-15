@@ -6,7 +6,7 @@ import { fetchVideosByIdUser } from "@/src/app/actions/pageActions";
 import { use } from "react";
 import Image from "next/image";
 import FormWrapper from "@/src/app/components/passwordComponents/FormWrapper";
-import ShowCourse from "@/src/app/components/dashboardComponents/courseComponents/ShowCourse";
+import ShowCourse from "@/src/app/components/courseComponents/ShowCourse";
 import SignInBtn from "@/src/app/components/ui/SignInBtn";
 import BuyCourseBtn from "@/src/app/components/ui/BuyCourseBtn";
 
