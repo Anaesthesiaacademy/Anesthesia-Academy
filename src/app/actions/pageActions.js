@@ -9,6 +9,8 @@ import Order from "../models/Order";
 import { revalidateTag } from "next/cache";
 import { deleteFromStorage } from "../lib/deleteFromStorage";
 import Video from "../models/Video";
+import Hashids from "hashids";
+import { addMonths } from "date-fns";
 
 const API_KEY = process.env.YOUTUBE_API_KEY;
 const CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
@@ -51,9 +53,9 @@ export async function updateCourses() {
       const response2 = await axios.get(
         `https://www.googleapis.com/youtube/v3/playlistItems?part=id&playlistId=${playlist.id}&key=${API_KEY}&maxResults=1`
       );
-
+      
       const totalVideos = response2.data.pageInfo.totalResults;
-
+            
       if (existingCourse?.count !== totalVideos) {
         await Course.updateOne(
           { playlistId: playlist.id },
@@ -125,32 +127,31 @@ export async function removeCourses() {
     const youtubePlaylists = response.data.items;
     const youtubePlaylistIds = youtubePlaylists.map((playlist) => playlist.id);
 
-    const storedCourses = await Course.find({}, "playlistId").lean();
+    const storedCourses = await Course.find({}, "playlistId").lean();;
 
     const coursesToDelete = storedCourses.filter(
       (course) => !youtubePlaylistIds.includes(course.playlistId)
     );
 
     if (coursesToDelete.length > 0) {
-      const { courseIdsToDelete, playlistIdsToDeleteConfirmed } =
-        coursesToDelete.reduce(
-          (acc, course) => {
-            acc.courseIdsToDelete.push(course._id);
-            acc.playlistIdsToDeleteConfirmed.push(course.playlistId);
-            return acc;
-          },
-          { courseIdsToDelete: [], playlistIdsToDeleteConfirmed: [] }
-        );
-
-      await Course.deleteMany({
-        playlistId: { $in: playlistIdsToDeleteConfirmed },
-      });
-
+      
+      const { courseIdsToDelete, playlistIdsToDeleteConfirmed } = coursesToDelete.reduce(
+        (acc, course) => {
+          acc.courseIdsToDelete.push(course._id);
+          acc.playlistIdsToDeleteConfirmed.push(course.playlistId);
+          return acc;
+        },
+        { courseIdsToDelete: [], playlistIdsToDeleteConfirmed: [] }
+      );
+    
+      await Course.deleteMany({ playlistId: { $in: playlistIdsToDeleteConfirmed } });
+    
       await Order.updateMany(
         { courseId: { $in: courseIdsToDelete } },
         { $set: { status: "deleted" } }
       );
     }
+
 
     return {
       success: true,
@@ -165,6 +166,13 @@ export async function removeCourses() {
     };
   }
 }
+
+
+
+
+
+
+
 
 // courses
 
@@ -181,6 +189,7 @@ export async function addCourses(data) {
   }
 
   try {
+
     const res = await Course.create(data);
 
     if (!res) {
@@ -191,6 +200,7 @@ export async function addCourses(data) {
     }
 
     revalidateTag("course");
+
 
     return {
       success: true,
@@ -225,6 +235,7 @@ export async function updateCourse({ courseId, ...data }) {
   }
 }
 
+
 export async function removeCourse(courseId) {
   await connectToDatabase();
 
@@ -238,6 +249,7 @@ export async function removeCourse(courseId) {
   }
 
   try {
+
     const { _id, thumbnail } = await Course.findOneAndDelete({ _id: courseId });
     if (!_id) {
       return {
@@ -255,6 +267,7 @@ export async function removeCourse(courseId) {
       success: true,
       message: "Course removed successfully",
     };
+
   } catch (error) {
     console.log(error);
     return {
@@ -267,6 +280,8 @@ export async function removeCourse(courseId) {
 // video
 
 export async function getVideosById(courseId) {
+
+
   const { user } = await getServerSession(authOptions);
 
   if (!user.role) {
@@ -279,9 +294,7 @@ export async function getVideosById(courseId) {
   try {
     await connectToDatabase();
 
-    const data = JSON.parse(
-      JSON.stringify(await Video.find({ courseId }, "-__v").lean())
-    );
+    const data = JSON.parse(JSON.stringify(await Video.find({ courseId }, "-__v").lean()));
 
     if (!data) {
       return {
@@ -294,6 +307,7 @@ export async function getVideosById(courseId) {
       success: true,
       data,
     };
+
   } catch (error) {
     console.log(error);
     return {
@@ -303,54 +317,54 @@ export async function getVideosById(courseId) {
   }
 }
 
+
+
 export async function fetchVideosByIdUser({ courseId, userId }) {
   const { user } = await getServerSession(authOptions);
 
   if (!user || !userId) {
     return {
       success: false,
-      message: "User not authenticated or userId not provided.",
+      message: 'User not authenticated or userId not provided.',
     };
   }
 
   const hashids = new Hashids(process.env.NEXT_PUBLIC_SECRET_ID, 10);
 
-  const realId = hashids.decodeHex(courseId);
+  const realId = hashids.decodeHex(courseId)
 
-  console.log("realId", realId, "///", process.env.NEXT_PUBLIC_SECRET_ID);
+
+  console.log("realId", realId, "///", process.env.NEXT_PUBLIC_SECRET_ID)
 
   if (!realId) {
     return {
       success: false,
-      message: "User not authenticated or userId not provided.",
+      message: 'User not authenticated or userId not provided.',
     };
   }
 
   await connectToDatabase();
 
-  const currentCourse = await Course.findOne(
-    { _id: realId },
-    { _id: 0, __v: 0 }
-  );
+  const currentCourse = await Course.findOne({ _id: realId }, { _id: 0, __v: 0 });
   const courseData = JSON.parse(JSON.stringify(currentCourse));
 
   if (!courseData) {
     return {
       success: false,
-      message: "Course not found.",
+      message: 'Course not found.',
     };
   }
 
   const hasPurchased = await Order.findOne({
     userId,
     courseId: realId,
-    status: "completed",
+    status: 'completed',
   });
 
-  if (!hasPurchased && user.role !== "admin") {
+  if (!hasPurchased && user.role !== 'admin') {
     return {
       success: false,
-      message: "Access denied. Please purchase the course.",
+      message: 'Access denied. Please purchase the course.',
       hasPurchased: false,
       courseData,
     };
@@ -358,27 +372,25 @@ export async function fetchVideosByIdUser({ courseId, userId }) {
 
   if (hasPurchased) {
     const now = Date.now();
-    const expData = addMonths(hasPurchased.createdAt, +3);
+    const expData = addMonths(hasPurchased.createdAt, +3)
 
-    if (expData < now && user.role !== "admin") {
+    if (expData < now && user.role !== 'admin') {
       await Order.updateOne(
         { _id: hasPurchased._id },
-        { $set: { status: "expired" } }
+        { $set: { status: 'expired' } }
       );
 
       return {
         success: false,
-        message: "Access denied. Your subscription to this course has expired.",
+        message: 'Access denied. Your subscription to this course has expired.',
         hasPurchased: false,
         courseData,
       };
     }
   }
   try {
-    const data = JSON.parse(
-      JSON.stringify(await Video.find({ courseId: realId }, "-__v").lean())
-    );
 
+    const data = JSON.parse(JSON.stringify(await Video.find({ courseId: realId }, "-__v").lean()));
     if (!data) {
       return {
         success: false,
@@ -394,10 +406,11 @@ export async function fetchVideosByIdUser({ courseId, userId }) {
   } catch (error) {
     return {
       success: false,
-      message: error.message || "Failed to fetch videos",
+      message: error.message || 'Failed to fetch videos',
     };
   }
 }
+
 
 export async function addVideo(data) {
   await connectToDatabase();
@@ -412,6 +425,7 @@ export async function addVideo(data) {
   }
 
   try {
+
     const res = await Video.create(data);
 
     if (!res) {
@@ -421,7 +435,10 @@ export async function addVideo(data) {
       };
     }
 
-    await Course.updateOne({ _id: data.courseId }, { $inc: { count: 1 } });
+    await Course.updateOne(
+      { _id: data.courseId },
+      { $inc: { count: 1 } }
+    )
 
     return {
       success: true,
@@ -468,9 +485,8 @@ export async function removeVideo(videoId, courseId) {
     };
   }
   try {
-    const { _id, thumbnail, video } = await Video.findOneAndDelete({
-      _id: videoId,
-    });
+
+    const { _id, thumbnail, video } = await Video.findOneAndDelete({ _id: videoId });
     if (!_id) {
       return {
         success: false,
@@ -486,12 +502,15 @@ export async function removeVideo(videoId, courseId) {
       await deleteFromStorage(thumbnail.cloudId);
     }
 
-    await Course.updateOne({ _id: courseId }, { $inc: { count: -1 } });
+    await Course.updateOne(
+      { _id: courseId },
+      { $inc: { count: -1 } });
 
     return {
       success: true,
       message: "Video removed successfully",
     };
+
   } catch (error) {
     console.log(error);
     return {

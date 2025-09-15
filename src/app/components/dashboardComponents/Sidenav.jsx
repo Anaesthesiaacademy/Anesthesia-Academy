@@ -2,6 +2,7 @@ import Link from "next/link";
 import React from "react";
 import LogoutBtn from "./LogoutBtn";
 import { FaArrowLeft } from "react-icons/fa6";
+import SideNavLink from "./SideNavLink";
 
 export default function Sidenav() {
   const links = [
@@ -43,13 +44,9 @@ export default function Sidenav() {
           </h4>
           <div className="flex flex-col gap-4 px-3">
             {links.map((link) => (
-              <Link
-                href={link.href}
-                key={link.id}
-                className="p-3 hover:bg-zinc-700 rounded-lg transition-colors duration-300"
-              >
+              <SideNavLink link={link} key={link.id}>
                 {link.title}
-              </Link>
+              </SideNavLink>
             ))}
           </div>
         </div>

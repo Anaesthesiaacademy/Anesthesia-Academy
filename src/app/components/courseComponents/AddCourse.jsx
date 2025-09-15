@@ -2,10 +2,10 @@
 
 import { useForm } from "react-hook-form";
 import { useState } from "react";
+import PrimaryButton from "../ui/PrimaryButton";
 import toast from "react-hot-toast";
 import { upload } from "../../lib/upload";
 import Image from "next/image";
-import PrimaryButton from "../ui/PrimaryButton";
 import { addCourses } from "../../actions/pageActions";
 
 export default function AddCourse() {

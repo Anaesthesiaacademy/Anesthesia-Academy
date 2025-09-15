@@ -1,7 +1,6 @@
 import Image from "next/image";
 import React from "react";
 import { getServerSession } from "next-auth";
-import AdminPanel from "@/src/app/components/AdminPanel";
 import AdminAnalyticsSection from "@/src/app/components/dashboardComponents/AdminAnalyticsSection";
 import { authOptions } from "@/src/app/api/auth/[...nextauth]/route";
 import UserAnalyticsSection from "@/src/app/components/dashboardComponents/UserAnalyticsSection";
@@ -33,12 +32,6 @@ export default async function Dashboard() {
           />
         </div>
       </div>
-
-      {session?.user?.role === "admin" && (
-        <div className="mt-10 bg-white py-5 px-8 rounded-xl shadow-lg">
-          <AdminPanel />
-        </div>
-      )}
 
       {session?.user?.role === "admin" ? (
         <AdminAnalyticsSection session={session} />
