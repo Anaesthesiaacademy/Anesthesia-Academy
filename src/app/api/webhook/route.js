@@ -30,6 +30,9 @@ export async function POST(req) {
     const courseId = merchantOrderId.split("-")[0];
     const userId = merchantOrderId.split("-")[1];
 
+    console.log("courseId", courseId)
+    console.log("order", order)
+
     if (!courseId) {
       return NextResponse.json(
         { error: "Missing course ID in webhook" },
@@ -37,8 +40,12 @@ export async function POST(req) {
       );
     }
 
+    const hashids = new Hashids(process.env.NEXT_PUBLIC_SECRET_ID, 10);
+
+    const realId = hashids.decodeHex(courseId)
+
     // Update course access
-    const newOrder = new Order({ userId, courseId, status: "completed" });
+    const newOrder = new Order({ userId, courseId: realId, status: "completed" });
     await newOrder.save();
 
     return NextResponse.json({
@@ -53,29 +60,3 @@ export async function POST(req) {
     );
   }
 }
-
-//   const { userId, courseId } = await req.json();
-//  try {
-//   await connectToDatabase();
-
-//   if (!userId || !courseId) {
-//     return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 });
-//   }
-
-//   const course = await Course.findById(courseId);
-//   if (!course) {
-//     return NextResponse.json({success: false, message: "Course not found" }, { status: 404 });
-//   }
-
-//   const existingOrder = await Order.findOne({ userId, courseId });
-//   if (existingOrder) {
-//     return NextResponse.json({ message: "Already purchased" }, { status: 400 });
-//   }
-
-//   const order = new Order({ userId, courseId, status: "completed" });
-//   await order.save();
-
-//   return NextResponse.json({ success: true, message: "Course purchased successfully" });
-//  } catch (error) {
-//   return NextResponse.json({ error: error.message || "Failed to purchase course" }, { status: 500 });
-//  }
