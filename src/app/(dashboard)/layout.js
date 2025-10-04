@@ -75,7 +75,7 @@ export default async function RootLayout({ children }) {
       >
         <Toaster />
         <main className="flex">
-          <Sidenav session={session} />
+          <Sidenav user={session.user} />
           <div className="bg-[#f5f5f5] w-4/5 min-h-screen ml-auto">
             {children}
           </div>
