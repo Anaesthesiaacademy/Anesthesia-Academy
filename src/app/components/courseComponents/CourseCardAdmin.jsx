@@ -41,18 +41,18 @@ export default function CourseCardAdmin({ course }) {
     }
   };
 
-  function handleUpload(ev) {
+   function handleUpload(ev) {
     upload(ev, async ({ url, fileName: cloudId }) => {
       if (url) {
         setPreview({
           url,
           cloudId,
-        }),
+        }, { shouldDirty: true });
           toast.success("Thumbnail uploaded successfully!");
       }
     });
   }
-
+  
   const handleDelete = async () => {
     const res = await removeCourse(course?._id);
 
