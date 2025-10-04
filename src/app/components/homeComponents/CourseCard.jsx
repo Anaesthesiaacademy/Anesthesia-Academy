@@ -6,8 +6,11 @@ import { FaBook } from "react-icons/fa";
 import Hashids from 'hashids';
 
 export default function CourseCard({ course, dateDistance }) {
+  console.log("dasdasda", course?._id)
   const hashids = new Hashids(process.env.NEXT_PUBLIC_SECRET_ID, 10);
-  const obfuscatedId = hashids.encodeHex(course?._id.toString());
+const obfuscatedId = course?._id 
+  ? hashids.encodeHex(course._id.toString()) 
+  : "";
 
 
   return (
