@@ -61,7 +61,15 @@ export default function Sidenav( { user }) {
             Anaesthesia Academy
           </h4>
           <div className="flex flex-col gap-4 px-3">
-            {user?.role === "admin" ? linksAdmin : linksUser.map((link) => (
+            {user?.role === "admin" ? linksAdmin.map((link) => (
+              <Link
+                href={link.href}
+                key={link.id}
+                className="p-3 hover:bg-zinc-700 rounded-lg transition-colors duration-300"
+              >
+                {link.title}
+              </Link>
+            )) : linksUser.map((link) => (
               <Link
                 href={link.href}
                 key={link.id}
