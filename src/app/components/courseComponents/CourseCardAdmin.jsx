@@ -142,7 +142,7 @@ export default function CourseCardAdmin({ course }) {
             className="bg-red-600 text-white p-2 rounded hover:bg-red-700"
             onClick={handleDelete}
           >
-            Delete Course
+            Delete Course7777
           </PrimaryButton>
         </div>
       </div>
