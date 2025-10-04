@@ -41,7 +41,7 @@ export default function CourseCardAdmin({ course }) {
     }
   };
 
-   function handleUpload(ev) {
+  function handleUpload(ev) {
     upload(ev, async ({ url, fileName: cloudId }) => {
       if (url) {
         setPreview({
@@ -52,7 +52,7 @@ export default function CourseCardAdmin({ course }) {
       }
     });
   }
-  
+
   const handleDelete = async () => {
     const res = await removeCourse(course?._id);
 
@@ -131,9 +131,7 @@ export default function CourseCardAdmin({ course }) {
         <div className="flex justify-between items-center gap-4 mt-4">
           <PrimaryButton
             disabled={!isDirty || isSubmitting}
-            className={`bg-blue-600 text-white p-2 rounded hover:bg-blue-700 ${
-              isSubmitting || (!isDirty && "opacity-50 cursor-not-allowed")
-            }`}
+            className={`bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:opacity-50 cursor-not-allowed`}
             type="submit"
           >
             Submit Course
@@ -142,7 +140,7 @@ export default function CourseCardAdmin({ course }) {
             className="bg-red-600 text-white p-2 rounded hover:bg-red-700"
             onClick={handleDelete}
           >
-            Delete Course7777
+            Delete Course
           </PrimaryButton>
         </div>
       </div>
