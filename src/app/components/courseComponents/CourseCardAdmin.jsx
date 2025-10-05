@@ -15,40 +15,39 @@ export default function CourseCardAdmin({ course }) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting, isDirty },
+    setValue,
   } = useForm({
     defaultValues: {
       title: course?.title || "",
       description: course?.description || "",
       price: course?.price || "",
-      thumbnail: null,
+      thumbnail: course?.thumbnail || null,
     },
   });
 
   const onSubmit = async (data) => {
-    console.log("data", { ...data, thumbnail: preview, courseId: course?._id });
-
-    const res = await updateCourse({
+    const payload = {
       ...data,
       thumbnail: preview,
       courseId: course?._id,
-    });
+    };
+
+    const res = await updateCourse(payload);
 
     if (res.success) {
       toast.success(res.message);
     } else {
       toast.error(res.message);
-      return;
     }
   };
 
   function handleUpload(ev) {
     upload(ev, async ({ url, fileName: cloudId }) => {
       if (url) {
-        setPreview({
-          url,
-          cloudId,
-        }, { shouldDirty: true });
-          toast.success("Thumbnail uploaded successfully!");
+        const newThumbnail = { url, cloudId };
+        setPreview(newThumbnail);
+        setValue("thumbnail", newThumbnail, { shouldDirty: true }); // ✅ يجعل isDirty = true
+        toast.success("Thumbnail uploaded successfully!");
       }
     });
   }
@@ -61,7 +60,6 @@ export default function CourseCardAdmin({ course }) {
       toast.success(res.message);
     } else {
       toast.error(res.message);
-      return;
     }
   };
 
@@ -72,7 +70,11 @@ export default function CourseCardAdmin({ course }) {
     >
       <div className="w-full h-[210px] overflow-hidden">
         <Image
-          src={`/api/upload/proxyImage?key=${encodeURIComponent(preview?.cloudId || course?.thumbnail?.cloudId)}` || preview}
+          src={
+            preview?.cloudId
+              ? `/api/upload/proxyImage?key=${encodeURIComponent(preview.cloudId)}`
+              : preview
+          }
           alt="Course Thumbnail"
           width={350}
           height={200}
@@ -105,8 +107,7 @@ export default function CourseCardAdmin({ course }) {
 
         {/* Thumbnail Upload */}
         <label className="flex flex-col px-1 mb-1">
-          <span className="text-gray-700">change Thumbnail:</span>
-
+          <span className="text-gray-700">Change Thumbnail:</span>
           <input
             type="file"
             accept="image/*"
@@ -116,7 +117,6 @@ export default function CourseCardAdmin({ course }) {
         </label>
 
         {/* Price */}
-
         <label className="flex flex-col px-1 mb-1">
           <span className="text-gray-700">Price:</span>
           <input
@@ -127,7 +127,7 @@ export default function CourseCardAdmin({ course }) {
           />
         </label>
 
-        {/* Submit */}
+        {/* Buttons */}
         <div className="flex justify-between items-center gap-4 mt-4">
           <PrimaryButton
             disabled={!isDirty || isSubmitting}
