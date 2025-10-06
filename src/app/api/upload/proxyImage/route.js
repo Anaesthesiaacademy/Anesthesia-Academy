@@ -17,7 +17,8 @@ function normalizeUrl(url) {
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const key = searchParams.get("key");
+  const rawKey = searchParams.get("key");
+  const key = decodeURIComponent(rawKey);
   const secure = searchParams.get("secure");
   const version = searchParams.get("v");
   const rangeHeader = request.headers.get("range");
@@ -34,62 +35,37 @@ export async function GET(request) {
 
     const isAllowed = allowedHosts.some(host => normalizeUrl(referer)?.startsWith(host));
 
-    console.log("Referer Check =>", { referer, allowedHosts, isAllowed });
-
     if (!isAllowed) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
   }
 
   try {
-    const headCommand = new HeadObjectCommand({
-      Bucket: process.env.IDRIVE_BUCKET,
-      Key: key,
-    });
-
-    const headResponse = await s3.send(headCommand);
-    const fileSize = headResponse.ContentLength;
-    const contentType = headResponse.ContentType || "video/mp4";
-
-    let start = 0;
-    let end = fileSize - 1;
-    let statusCode = 200;
-
-    if (rangeHeader) {
-      const parts = rangeHeader.replace(/bytes=/, "").split("-");
-      start = parseInt(parts[0], 10);
-      end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      statusCode = 206;
-
-      if (start >= fileSize || end >= fileSize) {
-        return new NextResponse("Range Not Satisfiable", {
-          status: 416,
-          headers: { "Content-Range": `bytes */${fileSize}` },
-        });
-      }
-    }
-
-    const chunkSize = rangeHeader ? end - start + 1 : fileSize;
-
+    // استخدم GetObject مباشرة بدون HeadObject
     const getCommand = new GetObjectCommand({
       Bucket: process.env.IDRIVE_BUCKET,
       Key: key,
-      Range: rangeHeader && rangeHeader.startsWith("bytes=") ? rangeHeader : undefined,
+      Range: rangeHeader,
     });
 
     const s3Response = await s3.send(getCommand);
+    
+    // خذ المعلومات من GetObject نفسه
+    const fileSize = s3Response.ContentLength;
+    const contentType = s3Response.ContentType || "video/mp4";
+    const contentRange = s3Response.ContentRange;
 
     const headers = new Headers();
     headers.set("Content-Type", contentType);
-    headers.set("Content-Length", chunkSize.toString());
+    headers.set("Content-Length", fileSize.toString());
     headers.set("Accept-Ranges", "bytes");
     headers.set("Cache-Control", "public, max-age=31536000, immutable");
     headers.set("CDN-Cache-Control", "public, max-age=31536000");
     headers.set("Vary", "Accept-Encoding, Range");
-    headers.set("ETag", headResponse.ETag || `"${key}-${version}"`);
+    headers.set("ETag", s3Response.ETag || `"${key}-${version}"`);
 
-    if (rangeHeader) {
-      headers.set("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+    if (contentRange) {
+      headers.set("Content-Range", contentRange);
     }
 
     const origin = request.headers.get("origin") || request.headers.get("referer");
@@ -103,7 +79,9 @@ export async function GET(request) {
     headers.set("Access-Control-Allow-Headers", "Range, Accept-Encoding");
     headers.set("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges");
 
+    const statusCode = rangeHeader ? 206 : 200;
     return new NextResponse(s3Response.Body, { status: statusCode, headers });
+    
   } catch (error) {
     console.error("Proxy video error:", error);
     if (error.name === "NoSuchKey") {
@@ -112,7 +90,6 @@ export async function GET(request) {
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
-
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
