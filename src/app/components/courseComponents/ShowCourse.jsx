@@ -139,7 +139,6 @@ export default function ShowCourse({ videos, session }) {
                 </p>
               </div>
               <div className="relative w-full aspect-video mt-7 p-3 shadow-lg rounded-md bg-white">
-                بسم الله الرحمن الرحيم
                 <video
                   preload="metadata"
                   className="w-full rounded-md h-full"
