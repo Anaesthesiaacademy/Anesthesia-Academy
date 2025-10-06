@@ -26,6 +26,8 @@ export async function GET(request) {
   const session = await getServerSession(authOptions);
 
   if (secure === "true") {
+    console.log("DSADASDASD", process.env.NEXT_PUBLIC_CDN_URL, process.env.NEXT_PUBLIC_BASE_URL , !referer.startsWith(process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_CDN_URL));
+    
     const referer = request.headers.get("referer");
     if (!session || !referer || !referer.startsWith(process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_CDN_URL)) {
       return new NextResponse("Unauthorized", { status: 401 });
