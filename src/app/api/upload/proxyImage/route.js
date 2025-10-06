@@ -13,30 +13,40 @@ const s3 = new S3Client({
   },
 });
 
+function normalizeUrl(url) {
+  return url?.replace(/\/+$/, "");
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
   const secure = searchParams.get("secure");
   const rangeHeader = request.headers.get("range");
 
-  if (!key) {
-    return new NextResponse("Missing key", { status: 400 });
-  }
+  if (!key) return new NextResponse("Missing key", { status: 400 });
 
   const session = await getServerSession(authOptions);
 
   if (secure === "true") {
-    const referer = request.headers.get("referer"); // ✅ Move this up
+    const referer = request.headers.get("referer");
 
-    console.log(
-      "DSADASDASD",
-      process.env.NEXT_PUBLIC_CDN_URL,
+    const allowedHosts = [
       process.env.NEXT_PUBLIC_BASE_URL,
-      referer,
-      !referer?.startsWith(process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_CDN_URL)
+      process.env.NEXT_PUBLIC_CDN_URL,
+    ].map(normalizeUrl);
+
+    const isAllowed = allowedHosts.some(host =>
+      normalizeUrl(referer)?.startsWith(host)
     );
 
-    if (!session || !referer || !referer.startsWith(process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_CDN_URL)) {
+    console.log("Referer Check =>", {
+      referer,
+      allowedHosts,
+      isAllowed,
+      hasSession: !!session,
+    });
+
+    if (!session || !isAllowed) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
   }
@@ -49,7 +59,6 @@ export async function GET(request) {
     });
 
     const s3Response = await s3.send(command);
-
     const headers = new Headers();
 
     if (s3Response.ContentRange) {
