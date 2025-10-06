@@ -19,7 +19,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
   const secure = searchParams.get("secure");
-  const version = searchParams.get("v"); // For cache busting
+  const version = searchParams.get("v");
   const rangeHeader = request.headers.get("range");
 
   if (!key) return new NextResponse("Missing key", { status: 400 });
@@ -27,21 +27,14 @@ export async function GET(request) {
   // Security check
   if (secure === "true") {
     const referer = request.headers.get("referer");
-
     const allowedHosts = [
       process.env.NEXT_PUBLIC_BASE_URL,
       process.env.NEXT_PUBLIC_CDN_URL,
     ].map(normalizeUrl);
 
-    const isAllowed = allowedHosts.some(host =>
-      normalizeUrl(referer)?.startsWith(host)
-    );
+    const isAllowed = allowedHosts.some(host => normalizeUrl(referer)?.startsWith(host));
 
-    console.log("Referer Check =>", {
-      referer,
-      allowedHosts,
-      isAllowed,
-    });
+    console.log("Referer Check =>", { referer, allowedHosts, isAllowed });
 
     if (!isAllowed) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -49,7 +42,6 @@ export async function GET(request) {
   }
 
   try {
-    // Get file metadata first to know the total size
     const headCommand = new HeadObjectCommand({
       Bucket: process.env.IDRIVE_BUCKET,
       Key: key,
@@ -63,72 +55,65 @@ export async function GET(request) {
     let end = fileSize - 1;
     let statusCode = 200;
 
-    // Parse range header if present
     if (rangeHeader) {
       const parts = rangeHeader.replace(/bytes=/, "").split("-");
       start = parseInt(parts[0], 10);
       end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      statusCode = 206; // Partial Content
+      statusCode = 206;
 
-      // Validate range
       if (start >= fileSize || end >= fileSize) {
         return new NextResponse("Range Not Satisfiable", {
           status: 416,
-          headers: {
-            "Content-Range": `bytes */${fileSize}`,
-          },
+          headers: { "Content-Range": `bytes */${fileSize}` },
         });
       }
     }
 
-    const chunkSize = end - start + 1;
+    const chunkSize = rangeHeader ? end - start + 1 : fileSize;
 
-    // Get the actual file content with range
     const getCommand = new GetObjectCommand({
       Bucket: process.env.IDRIVE_BUCKET,
       Key: key,
-      Range: rangeHeader || undefined,
+      Range: rangeHeader && rangeHeader.startsWith("bytes=") ? rangeHeader : undefined,
     });
 
     const s3Response = await s3.send(getCommand);
 
-    // Prepare response headers
     const headers = new Headers();
     headers.set("Content-Type", contentType);
     headers.set("Content-Length", chunkSize.toString());
     headers.set("Accept-Ranges", "bytes");
-    
+    headers.set("Cache-Control", "public, max-age=31536000, immutable");
+    headers.set("CDN-Cache-Control", "public, max-age=31536000");
+    headers.set("Vary", "Accept-Encoding, Range");
+    headers.set("ETag", headResponse.ETag || `"${key}-${version}"`);
+
     if (rangeHeader) {
       headers.set("Content-Range", `bytes ${start}-${end}/${fileSize}`);
     }
 
-    // Cache headers
-    headers.set("Cache-Control", "public, max-age=31536000, immutable");
-    headers.set("ETag", headResponse.ETag || `"${key}-${version}"`);
-    
-    // CORS headers if needed
-    headers.set("Access-Control-Allow-Origin", "*");
+    const origin = request.headers.get("origin") || request.headers.get("referer");
+    const allowedHosts = [
+      process.env.NEXT_PUBLIC_BASE_URL,
+      process.env.NEXT_PUBLIC_CDN_URL,
+    ].map(normalizeUrl);
+    const matchedOrigin = allowedHosts.find(host => normalizeUrl(origin)?.startsWith(host));
+    headers.set("Access-Control-Allow-Origin", matchedOrigin || "*");
     headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-    headers.set("Access-Control-Allow-Headers", "Range");
+    headers.set("Access-Control-Allow-Headers", "Range, Accept-Encoding");
+    headers.set("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges");
 
-    return new NextResponse(s3Response.Body, {
-      status: statusCode,
-      headers,
-    });
-
+    return new NextResponse(s3Response.Body, { status: statusCode, headers });
   } catch (error) {
     console.error("Proxy video error:", error);
-    
     if (error.name === "NoSuchKey") {
       return new NextResponse("Video not found", { status: 404 });
     }
-    
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
 
-// Handle OPTIONS requests for CORS
-export async function OPTIONS(request) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: {
