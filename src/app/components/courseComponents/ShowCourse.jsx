@@ -144,7 +144,7 @@ export default function ShowCourse({ videos, session }) {
                   className="w-full rounded-md h-full"
                   onContextMenu={(e) => e.preventDefault()}
                   controlsList="nodownload" // Hides the download button
-                  src={`https://cdn.anaesthesiaacademy.it.com/api/upload/proxyImage?key=${encodeURIComponent(video?.video?.cloudId)}&secure=true`}
+                  src={`${process.env.NEXT_PUBLIC_CDN_URL}/api/upload/proxyImage?key=${encodeURIComponent(video?.video?.cloudId)}&secure=true`}
                   title="YouTube Video"
                   allowFullScreen
                   controls
