@@ -1,18 +1,3 @@
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
-
-const s3 = new S3Client({
-  region: process.env.IDRIVE_REGION,
-  endpoint: process.env.IDRIVE_ENDPOINT,
-  forcePathStyle: true,
-  credentials: {
-    accessKeyId: process.env.IDRIVE_KEY,
-    secretAccessKey: process.env.IDRIVE_SECRET,
-  },
-});
-
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
@@ -26,9 +11,15 @@ export async function GET(request) {
   const session = await getServerSession(authOptions);
 
   if (secure === "true") {
-    console.log("DSADASDASD", process.env.NEXT_PUBLIC_CDN_URL, process.env.NEXT_PUBLIC_BASE_URL , !referer.startsWith(process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_CDN_URL));
-    
-    const referer = request.headers.get("referer");
+    const referer = request.headers.get("referer"); // ✅ Move this up
+
+    console.log(
+      "DSADASDASD",
+      process.env.NEXT_PUBLIC_CDN_URL,
+      process.env.NEXT_PUBLIC_BASE_URL,
+      !referer?.startsWith(process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_CDN_URL)
+    );
+
     if (!session || !referer || !referer.startsWith(process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_CDN_URL)) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -38,7 +29,7 @@ export async function GET(request) {
     const command = new GetObjectCommand({
       Bucket: process.env.IDRIVE_BUCKET,
       Key: key,
-      Range: rangeHeader || undefined, // support partial content
+      Range: rangeHeader || undefined,
     });
 
     const s3Response = await s3.send(command);
