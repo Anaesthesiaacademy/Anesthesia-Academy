@@ -32,6 +32,7 @@ export async function GET(request) {
       "DSADASDASD",
       process.env.NEXT_PUBLIC_CDN_URL,
       process.env.NEXT_PUBLIC_BASE_URL,
+      referer,
       !referer?.startsWith(process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_CDN_URL)
     );
 
