@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { IoClose, IoMenu } from "react-icons/io5";
 import { FaArrowLeft } from "react-icons/fa6";
 import { useRouter } from "next/navigation";
@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 export default function ShowCourse({ videos, session }) {
   const [video, setVideo] = useState(videos?.[0] || {});
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const videoRef = useRef(null);
 
   console.log("video", video);
 
@@ -20,7 +21,6 @@ export default function ShowCourse({ videos, session }) {
     }
 
     const handleKeyDown = (e) => {
-
       // F12
       if (e.key === 'F12') {
         e.preventDefault()
@@ -53,9 +53,14 @@ export default function ShowCourse({ videos, session }) {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('contextmenu', handleContextMenu)
     }
-
   }, [])
 
+  // Reset video when changing to a new one
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
+  }, [video?._id]);
 
   return (
     <div className="text-white min-h-screen flex relative">
@@ -109,7 +114,6 @@ export default function ShowCourse({ videos, session }) {
       </div>
 
       <div className="ml-auto bg-gray-100 md:w-4/5 w-full text-black">
-
         <div className="w-fit p-2 z-50 block md:hidden">
           <FaArrowLeft
             onClick={() => router.back()}
@@ -140,16 +144,18 @@ export default function ShowCourse({ videos, session }) {
               </div>
               <div className="relative w-full aspect-video mt-7 p-3 shadow-lg rounded-md bg-white">
                 <video
+                  ref={videoRef}
+                  key={video?._id}
                   preload="metadata"
                   className="w-full rounded-md h-full"
                   onContextMenu={(e) => e.preventDefault()}
-                  controlsList="nodownload" // Hides the download button
-                  src={`${process.env.NEXT_PUBLIC_CDN_URL}/api/upload/proxyImage?key=${encodeURIComponent(video?.video?.cloudId)}&secure=true`}
-                  title="YouTube Video"
+                  controlsList="nodownload"
+                  src={`${process.env.NEXT_PUBLIC_CDN_URL}/api/upload/proxyImage?key=${encodeURIComponent(video?.video?.cloudId)}&secure=true&v=${video?._id}`}
+                  title="Video Player"
                   allowFullScreen
                   controls
                   poster={
-                    video?.thumbnail?.url
+                    video?.thumbnail?.cloudId
                       ? `/api/upload/proxyImage?key=${encodeURIComponent(video?.thumbnail?.cloudId)}`
                       : "/course.jpg"
                   }
