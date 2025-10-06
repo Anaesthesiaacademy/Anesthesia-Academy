@@ -20,7 +20,6 @@ export async function GET(request) {
   const rawKey = searchParams.get("key");
   const key = decodeURIComponent(rawKey);
   const secure = searchParams.get("secure");
-  const version = searchParams.get("v");
   const rangeHeader = request.headers.get("range");
 
   if (!key) return new NextResponse("Missing key", { status: 400 });
@@ -62,7 +61,7 @@ export async function GET(request) {
     headers.set("Cache-Control", "public, max-age=31536000, immutable");
     headers.set("CDN-Cache-Control", "public, max-age=31536000");
     headers.set("Vary", "Accept-Encoding, Range");
-    headers.set("ETag", s3Response.ETag || `"${key}-${version}"`);
+    headers.set("ETag", s3Response.ETag || `"${key}"`);
 
     if (contentRange) {
       headers.set("Content-Range", contentRange);
