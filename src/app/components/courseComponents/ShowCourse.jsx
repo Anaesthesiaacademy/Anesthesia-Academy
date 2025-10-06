@@ -140,12 +140,11 @@ export default function ShowCourse({ videos, session }) {
               </div>
               <div className="relative w-full aspect-video mt-7 p-3 shadow-lg rounded-md bg-white">
                 <video
-                  key={video?._id} // ⭐ IMPORTANT: Forces video to reload when changing
                   preload="metadata"
                   className="w-full rounded-md h-full"
                   onContextMenu={(e) => e.preventDefault()}
-                  controlsList="nodownload"
-                  src={`${process.env.NEXT_PUBLIC_CDN_URL}/api/upload/proxyImage?key=${encodeURIComponent(video?.video?.cloudId)}&secure=true&v=${video?._id}`}
+                  controlsList="nodownload" // Hides the download button
+                  src={`${process.env.NEXT_PUBLIC_CDN_URL}/api/upload/proxyImage?key=${encodeURIComponent(video?.video?.cloudId)}&secure=true`}
                   title="YouTube Video"
                   allowFullScreen
                   controls
