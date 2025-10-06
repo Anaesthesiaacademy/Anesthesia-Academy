@@ -27,7 +27,7 @@ export async function GET(request) {
 
   if (secure === "true") {
     const referer = request.headers.get("referer");
-    if (!session || !referer || !referer.startsWith(process.env.NEXT_PUBLIC_BASE_URL)) {
+    if (!session || !referer || !referer.startsWith(process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_CDN_URL)) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
   }
