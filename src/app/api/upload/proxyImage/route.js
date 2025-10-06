@@ -1,3 +1,18 @@
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../auth/[...nextauth]/route";
+
+const s3 = new S3Client({
+  region: process.env.IDRIVE_REGION,
+  endpoint: process.env.IDRIVE_ENDPOINT,
+  forcePathStyle: true,
+  credentials: {
+    accessKeyId: process.env.IDRIVE_KEY,
+    secretAccessKey: process.env.IDRIVE_SECRET,
+  },
+});
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
