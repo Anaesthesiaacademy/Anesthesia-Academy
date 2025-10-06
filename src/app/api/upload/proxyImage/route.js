@@ -1,7 +1,5 @@
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
 
 const s3 = new S3Client({
   region: process.env.IDRIVE_REGION,
@@ -21,12 +19,12 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
   const secure = searchParams.get("secure");
+  const version = searchParams.get("v"); // For cache busting
   const rangeHeader = request.headers.get("range");
 
   if (!key) return new NextResponse("Missing key", { status: 400 });
 
-  const session = await getServerSession(authOptions);
-
+  // Security check
   if (secure === "true") {
     const referer = request.headers.get("referer");
 
@@ -43,41 +41,100 @@ export async function GET(request) {
       referer,
       allowedHosts,
       isAllowed,
-      hasSession: !!session,
     });
 
-    if (!session || !isAllowed) {
+    if (!isAllowed) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
   }
 
   try {
-    const command = new GetObjectCommand({
+    // Get file metadata first to know the total size
+    const headCommand = new HeadObjectCommand({
+      Bucket: process.env.IDRIVE_BUCKET,
+      Key: key,
+    });
+
+    const headResponse = await s3.send(headCommand);
+    const fileSize = headResponse.ContentLength;
+    const contentType = headResponse.ContentType || "video/mp4";
+
+    let start = 0;
+    let end = fileSize - 1;
+    let statusCode = 200;
+
+    // Parse range header if present
+    if (rangeHeader) {
+      const parts = rangeHeader.replace(/bytes=/, "").split("-");
+      start = parseInt(parts[0], 10);
+      end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      statusCode = 206; // Partial Content
+
+      // Validate range
+      if (start >= fileSize || end >= fileSize) {
+        return new NextResponse("Range Not Satisfiable", {
+          status: 416,
+          headers: {
+            "Content-Range": `bytes */${fileSize}`,
+          },
+        });
+      }
+    }
+
+    const chunkSize = end - start + 1;
+
+    // Get the actual file content with range
+    const getCommand = new GetObjectCommand({
       Bucket: process.env.IDRIVE_BUCKET,
       Key: key,
       Range: rangeHeader || undefined,
     });
 
-    const s3Response = await s3.send(command);
-    const headers = new Headers();
+    const s3Response = await s3.send(getCommand);
 
-    if (s3Response.ContentRange) {
-      headers.set("Content-Range", s3Response.ContentRange);
-      headers.set("Accept-Ranges", "bytes");
-      headers.set("Content-Length", s3Response.ContentLength?.toString() || "0");
-    } else {
-      headers.set("Content-Length", s3Response.ContentLength?.toString() || "0");
+    // Prepare response headers
+    const headers = new Headers();
+    headers.set("Content-Type", contentType);
+    headers.set("Content-Length", chunkSize.toString());
+    headers.set("Accept-Ranges", "bytes");
+    
+    if (rangeHeader) {
+      headers.set("Content-Range", `bytes ${start}-${end}/${fileSize}`);
     }
 
-    headers.set("Content-Type", s3Response.ContentType || "application/octet-stream");
+    // Cache headers
     headers.set("Cache-Control", "public, max-age=31536000, immutable");
+    headers.set("ETag", headResponse.ETag || `"${key}-${version}"`);
+    
+    // CORS headers if needed
+    headers.set("Access-Control-Allow-Origin", "*");
+    headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+    headers.set("Access-Control-Allow-Headers", "Range");
 
     return new NextResponse(s3Response.Body, {
-      status: s3Response.ContentRange ? 206 : 200,
+      status: statusCode,
       headers,
     });
+
   } catch (error) {
     console.error("Proxy video error:", error);
-    return new NextResponse("Video not found", { status: 404 });
+    
+    if (error.name === "NoSuchKey") {
+      return new NextResponse("Video not found", { status: 404 });
+    }
+    
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
+}
+
+// Handle OPTIONS requests for CORS
+export async function OPTIONS(request) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+      "Access-Control-Allow-Headers": "Range",
+    },
+  });
 }
