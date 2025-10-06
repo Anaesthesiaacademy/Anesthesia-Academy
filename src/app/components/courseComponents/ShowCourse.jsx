@@ -150,7 +150,7 @@ export default function ShowCourse({ videos, session }) {
                   className="w-full rounded-md h-full"
                   onContextMenu={(e) => e.preventDefault()}
                   controlsList="nodownload"
-                  src={`${process.env.NEXT_PUBLIC_CDN_URL}/api/upload/proxyImage?key=${encodeURIComponent(video?.video?.cloudId)}&secure=true&v=${video?._id}`}
+                  src={`/api/upload/proxyImage?key=${encodeURIComponent(video?.video?.cloudId)}&secure=true&v=${video?._id}`}
                   title="Video Player"
                   allowFullScreen
                   controls
