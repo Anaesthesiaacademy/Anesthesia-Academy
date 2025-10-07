@@ -17,141 +17,162 @@ function normalizeUrl(url) {
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const rawKey = searchParams.get("key");
-  const key = decodeURIComponent(rawKey);
+  // ⚠️ searchParams.get() already decodes - no need for decodeURIComponent
+  const key = searchParams.get("key");
   const secure = searchParams.get("secure");
   const version = searchParams.get("v"); // For cache busting
   const rangeHeader = request.headers.get("range");
 
-  if (!key) return new NextResponse("Missing key", { status: 400 });
+  if (!key) {
+    return new NextResponse("Missing key", { 
+      status: 400,
+      headers: { "Cache-Control": "no-store" }
+    });
+  }
 
   // Security check
   if (secure === "true") {
     const referer = request.headers.get("referer");
-
     const allowedHosts = [
       process.env.NEXT_PUBLIC_BASE_URL,
       process.env.NEXT_PUBLIC_CDN_URL,
     ].map(normalizeUrl);
 
-    const isAllowed = allowedHosts.some(host =>
+    const isAllowed = allowedHosts.some(host => 
       normalizeUrl(referer)?.startsWith(host)
     );
 
-    console.log("Referer Check =>", {
-      referer,
-      allowedHosts,
-      isAllowed,
-    });
-
     if (!isAllowed) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return new NextResponse("Unauthorized", { 
+        status: 401,
+        headers: { "Cache-Control": "no-store" }
+      });
     }
   }
 
   try {
-    // Get file metadata first to know the total size
+    // 1. Get file metadata
     const headCommand = new HeadObjectCommand({
       Bucket: process.env.IDRIVE_BUCKET,
       Key: key,
     });
-
+    
     const headResponse = await s3.send(headCommand);
     const fileSize = headResponse.ContentLength;
     const contentType = headResponse.ContentType || "video/mp4";
 
+    // 2. Parse range header
     let start = 0;
     let end = fileSize - 1;
     let statusCode = 200;
+    let contentLength = fileSize;
 
-    // Parse range header if present
-    if (rangeHeader) {
+    if (rangeHeader && rangeHeader.startsWith("bytes=")) {
       const parts = rangeHeader.replace(/bytes=/, "").split("-");
-      start = parseInt(parts[0], 10);
+      start = parseInt(parts[0], 10) || 0;
       end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      statusCode = 206; // Partial Content
+      statusCode = 206;
+      contentLength = end - start + 1;
 
       // Validate range
-      if (start >= fileSize || end >= fileSize) {
+      if (start >= fileSize || end >= fileSize || start > end) {
         return new NextResponse("Range Not Satisfiable", {
           status: 416,
-          headers: {
+          headers: { 
             "Content-Range": `bytes */${fileSize}`,
+            "Cache-Control": "no-store"
           },
         });
       }
     }
 
-    const chunkSize = end - start + 1;
-
-    // Get the actual file content with range
+    // 3. Get file content
     const getCommand = new GetObjectCommand({
       Bucket: process.env.IDRIVE_BUCKET,
       Key: key,
-      Range: rangeHeader || undefined,
+      Range: rangeHeader && rangeHeader.startsWith("bytes=") ? rangeHeader : undefined,
     });
 
     const s3Response = await s3.send(getCommand);
 
-    // Prepare response headers
+    // 4. Prepare headers
     const headers = new Headers();
     headers.set("Content-Type", contentType);
-    headers.set("Content-Length", chunkSize.toString());
+    headers.set("Content-Length", contentLength.toString());
     headers.set("Accept-Ranges", "bytes");
     
-    if (rangeHeader) {
+    if (statusCode === 206) {
       headers.set("Content-Range", `bytes ${start}-${end}/${fileSize}`);
     }
 
-    // Cache headers - CRITICAL for Cloudflare
+    // Cache headers - CRITICAL for CDN
     headers.set("Cache-Control", "public, max-age=31536000, immutable");
-    headers.set("ETag", headResponse.ETag || `"${key}-${version}"`);
-    headers.set("Vary", "Accept-Encoding, Range"); // Important for Range caching
+    headers.set("CDN-Cache-Control", "public, max-age=31536000");
     
-    // CORS headers
+    // ETag for validation
+    if (headResponse.ETag) {
+      headers.set("ETag", headResponse.ETag);
+    } else if (version) {
+      headers.set("ETag", `"${key.split('/').pop()}-${version}"`);
+    }
+
+    // Vary header - only for content negotiation headers
+    // ⚠️ NEVER add "Range" to Vary - it will break CDN caching!
+    headers.set("Vary", "Accept-Encoding");
+
+    // CORS headers - simplified
     headers.set("Access-Control-Allow-Origin", "*");
     headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
     headers.set("Access-Control-Allow-Headers", "Range, Accept-Encoding");
-    headers.set("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges");
+    headers.set("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, ETag");
 
-    return new NextResponse(s3Response.Body, {
-      status: statusCode,
-      headers,
+    return new NextResponse(s3Response.Body, { 
+      status: statusCode, 
+      headers 
     });
 
   } catch (error) {
     console.error("Proxy video error:", error);
     
+    // Don't cache error responses
+    const errorHeaders = {
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+      "Pragma": "no-cache",
+      "Expires": "0"
+    };
+
     if (error.name === "NoSuchKey") {
-      // ⭐ CRITICAL: Don't cache 404 responses
       return new NextResponse("Video not found", { 
         status: 404,
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-          "Pragma": "no-cache",
-          "Expires": "0",
-        }
+        headers: errorHeaders
       });
     }
-    
-    // Don't cache errors
+
+    if (error.$metadata?.httpStatusCode === 416) {
+      return new NextResponse("Range Not Satisfiable", {
+        status: 416,
+        headers: { 
+          ...errorHeaders,
+          "Content-Range": "bytes */*" 
+        },
+      });
+    }
+
     return new NextResponse("Internal Server Error", { 
       status: 500,
-      headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate",
-      }
+      headers: errorHeaders
     });
   }
 }
 
-// Handle OPTIONS requests for CORS
 export async function OPTIONS(request) {
   return new NextResponse(null, {
     status: 204,
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-      "Access-Control-Allow-Headers": "Range",
+      "Access-Control-Allow-Headers": "Range, Accept-Encoding",
+      "Access-Control-Max-Age": "86400", // Cache preflight for 24 hours
     },
   });
 }
