@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
@@ -25,7 +25,6 @@ export async function GET(request) {
   }
 
   const session = await getServerSession(authOptions);
-
   if (secure === "true") {
     const referer = request.headers.get("referer");
     if (!session || !referer || !referer.startsWith(process.env.NEXT_PUBLIC_BASE_URL)) {
@@ -34,31 +33,61 @@ export async function GET(request) {
   }
 
   try {
-    const command = new GetObjectCommand({
+    // Get file metadata first
+    const headCommand = new HeadObjectCommand({
       Bucket: process.env.IDRIVE_BUCKET,
       Key: key,
-      Range: rangeHeader || undefined, // support partial content
     });
+    const headResponse = await s3.send(headCommand);
+    const fileSize = headResponse.ContentLength;
+    const contentType = headResponse.ContentType || "video/mp4";
 
-    const s3Response = await s3.send(command);
+    // Handle range requests for video streaming
+    if (rangeHeader) {
+      const parts = rangeHeader.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
 
-    const headers = new Headers();
+      const command = new GetObjectCommand({
+        Bucket: process.env.IDRIVE_BUCKET,
+        Key: key,
+        Range: `bytes=${start}-${end}`,
+      });
 
-    if (s3Response.ContentRange) {
-      headers.set("Content-Range", s3Response.ContentRange);
+      const s3Response = await s3.send(command);
+
+      const headers = new Headers();
+      headers.set("Content-Range", `bytes ${start}-${end}/${fileSize}`);
       headers.set("Accept-Ranges", "bytes");
-      headers.set("Content-Length", s3Response.ContentLength?.toString() || "0");
+      headers.set("Content-Length", chunkSize.toString());
+      headers.set("Content-Type", contentType);
+      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+
+      return new NextResponse(s3Response.Body, {
+        status: 206,
+        headers,
+      });
     } else {
-      headers.set("Content-Length", s3Response.ContentLength?.toString() || "0");
+      // No range request - return full file with Accept-Ranges header
+      const command = new GetObjectCommand({
+        Bucket: process.env.IDRIVE_BUCKET,
+        Key: key,
+      });
+
+      const s3Response = await s3.send(command);
+
+      const headers = new Headers();
+      headers.set("Accept-Ranges", "bytes");
+      headers.set("Content-Length", fileSize.toString());
+      headers.set("Content-Type", contentType);
+      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+
+      return new NextResponse(s3Response.Body, {
+        status: 200,
+        headers,
+      });
     }
-
-    headers.set("Content-Type", s3Response.ContentType || "application/octet-stream");
-    headers.set("Cache-Control", "public, max-age=31536000, immutable");
-
-    return new NextResponse(s3Response.Body, {
-      status: s3Response.ContentRange ? 206 : 200,
-      headers,
-    });
   } catch (error) {
     console.error("Proxy video error:", error);
     return new NextResponse("Video not found", { status: 404 });
