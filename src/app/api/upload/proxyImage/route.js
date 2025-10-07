@@ -18,14 +18,10 @@ function normalizeUrl(url) {
 
 function isAllowedHost(hostname, allowedUrls) {
   if (!hostname) return false;
-  
   const normalizedHostname = hostname.toLowerCase();
-  
   return allowedUrls.some((url) => {
     const allowedHost = normalizeUrl(url).toLowerCase();
-    // تحقق من التطابق التام أو النطاق الفرعي
-    return normalizedHostname === allowedHost || 
-           normalizedHostname.endsWith(`.${allowedHost}`);
+    return normalizedHostname === allowedHost || normalizedHostname.endsWith(`.${allowedHost}`);
   });
 }
 
@@ -44,92 +40,74 @@ export async function GET(request) {
     process.env.NEXT_PUBLIC_CDN_URL,
   ].filter(Boolean);
 
-  // ✅ تحقق من Referer أو Origin للطلبات الآمنة
+  // ✅ تحقق من Referer أو Origin عند secure=true
   if (secure === "true") {
     const referer = request.headers.get("referer");
     const origin = request.headers.get("origin");
-    
     let isAuthorized = false;
 
-    // تحقق من الـ referer
     if (referer) {
       try {
         const refererHost = new URL(referer).hostname;
         isAuthorized = isAllowedHost(refererHost, allowedUrls);
-      } catch {
-        // referer غير صالح
-      }
+      } catch {}
     }
 
-    // إذا لم ينجح الـ referer، جرّب الـ origin
     if (!isAuthorized && origin) {
       try {
         const originHost = new URL(origin).hostname;
         isAuthorized = isAllowedHost(originHost, allowedUrls);
-      } catch {
-        // origin غير صالح
-      }
+      } catch {}
     }
 
     if (!isAuthorized) {
-      console.error("Unauthorized access attempt:", {
-        referer,
-        origin,
-        allowedUrls
-      });
+      console.error("❌ Unauthorized access attempt:", { referer, origin, allowedUrls });
       return new NextResponse("Unauthorized", { status: 401 });
     }
   }
 
   try {
-    // ⚡ استخدم Range صغير لتسريع التشغيل
-    let range = rangeHeader;
-    if (!rangeHeader) range = "bytes=0-1048575"; // أول 1MB فقط
-
+    // ✅ إذا في Range header → استخدمه، غير كده حمّل كل الفيديو
     const getCommand = new GetObjectCommand({
       Bucket: process.env.IDRIVE_BUCKET,
       Key: key,
-      Range: range,
+      ...(rangeHeader ? { Range: rangeHeader } : {}),
     });
 
     const s3Response = await s3.send(getCommand);
 
-    const contentLength = s3Response.ContentLength || 1048576;
     const contentType = s3Response.ContentType || "video/mp4";
-
-    // ✅ استخدم ContentRange لو متاح لتحديد حجم الملف الكلي
-    let totalSize = contentLength;
-    if (s3Response.ContentRange) {
-      const match = s3Response.ContentRange.match(/\/(\d+)$/);
-      if (match) totalSize = parseInt(match[1], 10);
-    }
+    const contentLength = s3Response.ContentLength;
+    const totalSize =
+      s3Response.ContentRange?.match(/\/(\d+)$/)?.[1] || contentLength || 0;
 
     const headers = new Headers();
     headers.set("Content-Type", contentType);
-    headers.set("Content-Length", contentLength.toString());
     headers.set("Accept-Ranges", "bytes");
     headers.set("Cache-Control", "public, max-age=31536000, immutable");
     headers.set("CDN-Cache-Control", "public, max-age=31536000, immutable");
-    headers.set("Vary", "Accept-Encoding, Range");
+    headers.set("Vary", "Origin, Range, Accept-Encoding");
     headers.set("ETag", s3Response.ETag || `"${key}-${version}"`);
 
-    if (range) {
-      const rangeMatch = range.match(/bytes=(\d+)-(\d*)/);
+    // ✅ Content-Length و Content-Range
+    if (rangeHeader) {
+      const rangeMatch = rangeHeader.match(/bytes=(\d+)-(\d*)/);
       if (rangeMatch) {
         const start = rangeMatch[1];
-        const end = rangeMatch[2] || (totalSize - 1);
+        const end = rangeMatch[2] || totalSize - 1;
         headers.set("Content-Range", `bytes ${start}-${end}/${totalSize}`);
       }
+      headers.set("Content-Length", contentLength?.toString() || "");
+    } else if (contentLength) {
+      headers.set("Content-Length", contentLength.toString());
     }
 
-    // ✅ إعداد CORS بشكل صحيح
+    // ✅ إعداد CORS
     const origin = request.headers.get("origin");
-    
     if (origin) {
       try {
         const originHost = new URL(origin).hostname;
         const isAllowed = isAllowedHost(originHost, allowedUrls);
-        
         if (isAllowed) {
           headers.set("Access-Control-Allow-Origin", origin);
           headers.set("Access-Control-Allow-Credentials", "true");
@@ -137,29 +115,32 @@ export async function GET(request) {
           headers.set("Access-Control-Allow-Origin", "*");
         }
       } catch {
-        if (secure !== "true") {
-          headers.set("Access-Control-Allow-Origin", "*");
-        }
+        if (secure !== "true") headers.set("Access-Control-Allow-Origin", "*");
       }
     } else if (secure !== "true") {
       headers.set("Access-Control-Allow-Origin", "*");
     }
 
     headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-    headers.set("Access-Control-Allow-Headers", "Range, Accept-Encoding");
-    headers.set("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, ETag");
+    headers.set(
+      "Access-Control-Allow-Headers",
+      "Range, Accept-Encoding, Origin, Referer"
+    );
+    headers.set(
+      "Access-Control-Expose-Headers",
+      "Content-Length, Content-Range, Accept-Ranges, ETag"
+    );
 
-    return new NextResponse(s3Response.Body, { 
-      status: rangeHeader ? 206 : 200, 
-      headers 
+    return new NextResponse(s3Response.Body, {
+      status: rangeHeader ? 206 : 200,
+      headers,
     });
   } catch (error) {
-    console.error("Proxy video error:", error);
+    console.error("🚨 Proxy video error:", error);
 
     if (error.name === "NoSuchKey") {
       return new NextResponse("Video not found", { status: 404 });
     }
-
     if (error.$metadata?.httpStatusCode === 416) {
       return new NextResponse("Range Not Satisfiable", {
         status: 416,
@@ -179,12 +160,11 @@ export async function OPTIONS(request) {
   ].filter(Boolean);
 
   const headers = new Headers();
-  
+
   if (origin) {
     try {
       const originHost = new URL(origin).hostname;
       const isAllowed = isAllowedHost(originHost, allowedUrls);
-      
       if (isAllowed) {
         headers.set("Access-Control-Allow-Origin", origin);
         headers.set("Access-Control-Allow-Credentials", "true");
@@ -199,7 +179,10 @@ export async function OPTIONS(request) {
   }
 
   headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-  headers.set("Access-Control-Allow-Headers", "Range, Accept-Encoding");
+  headers.set(
+    "Access-Control-Allow-Headers",
+    "Range, Accept-Encoding, Origin, Referer"
+  );
   headers.set("Access-Control-Max-Age", "86400");
 
   return new NextResponse(null, { status: 204, headers });
