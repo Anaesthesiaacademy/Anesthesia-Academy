@@ -12,7 +12,21 @@ const s3 = new S3Client({
 });
 
 function normalizeUrl(url) {
-  return url?.replace(/\/+$/, "");
+  if (!url) return "";
+  return url.replace(/\/+$/, "").replace(/^https?:\/\//, "");
+}
+
+function isAllowedHost(hostname, allowedUrls) {
+  if (!hostname) return false;
+  
+  const normalizedHostname = hostname.toLowerCase();
+  
+  return allowedUrls.some((url) => {
+    const allowedHost = normalizeUrl(url).toLowerCase();
+    // تحقق من التطابق التام أو النطاق الفرعي
+    return normalizedHostname === allowedHost || 
+           normalizedHostname.endsWith(`.${allowedHost}`);
+  });
 }
 
 export async function GET(request) {
@@ -20,34 +34,51 @@ export async function GET(request) {
   const rawKey = searchParams.get("key");
   const key = decodeURIComponent(rawKey);
   const secure = searchParams.get("secure");
-  const version = searchParams.get("v") || Date.now(); // 👈 كسر الكاش للفيديوهات الجديدة
+  const version = searchParams.get("v");
   const rangeHeader = request.headers.get("range");
 
   if (!key) return new NextResponse("Missing key", { status: 400 });
 
-  // ✅ تحقق من referer بشكل آمن
-  let refererHost = "";
-  const referer = request.headers.get("referer");
-  if (referer) {
-    try {
-      refererHost = new URL(referer).hostname;
-    } catch {
-      refererHost = "";
-    }
-  }
+  const allowedUrls = [
+    process.env.NEXT_PUBLIC_BASE_URL,
+    process.env.NEXT_PUBLIC_CDN_URL,
+  ].filter(Boolean);
 
+  // ✅ تحقق من Referer أو Origin للطلبات الآمنة
   if (secure === "true") {
-    const allowedHosts = [
-      process.env.NEXT_PUBLIC_BASE_URL,
-      process.env.NEXT_PUBLIC_CDN_URL,
-    ].map(normalizeUrl);
+    const referer = request.headers.get("referer");
+    const origin = request.headers.get("origin");
+    
+    let isAuthorized = false;
 
-    const isAllowed = allowedHosts.some((host) => {
-      const allowedHost = new URL(host).hostname;
-      return refererHost === allowedHost || refererHost.endsWith(`.${allowedHost}`);
-    });
+    // تحقق من الـ referer
+    if (referer) {
+      try {
+        const refererHost = new URL(referer).hostname;
+        isAuthorized = isAllowedHost(refererHost, allowedUrls);
+      } catch {
+        // referer غير صالح
+      }
+    }
 
-    if (!isAllowed) return new NextResponse("Unauthorized", { status: 401 });
+    // إذا لم ينجح الـ referer، جرّب الـ origin
+    if (!isAuthorized && origin) {
+      try {
+        const originHost = new URL(origin).hostname;
+        isAuthorized = isAllowedHost(originHost, allowedUrls);
+      } catch {
+        // origin غير صالح
+      }
+    }
+
+    if (!isAuthorized) {
+      console.error("Unauthorized access attempt:", {
+        referer,
+        origin,
+        allowedUrls
+      });
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
   }
 
   try {
@@ -83,32 +114,45 @@ export async function GET(request) {
     headers.set("ETag", s3Response.ETag || `"${key}-${version}"`);
 
     if (range) {
-      headers.set("Content-Range", range.replace("bytes=", "bytes ") + `/${totalSize}`);
+      const rangeMatch = range.match(/bytes=(\d+)-(\d*)/);
+      if (rangeMatch) {
+        const start = rangeMatch[1];
+        const end = rangeMatch[2] || (totalSize - 1);
+        headers.set("Content-Range", `bytes ${start}-${end}/${totalSize}`);
+      }
     }
 
-    // ✅ إعداد CORS بشكل ذكي
+    // ✅ إعداد CORS بشكل صحيح
     const origin = request.headers.get("origin");
-    const allowedHosts = [
-      process.env.NEXT_PUBLIC_BASE_URL,
-      process.env.NEXT_PUBLIC_CDN_URL,
-    ].map(normalizeUrl);
-
-    const matchedOrigin = allowedHosts.find((host) =>
-      normalizeUrl(origin)?.startsWith(host)
-    );
-
-    if (matchedOrigin) {
-      headers.set("Access-Control-Allow-Origin", matchedOrigin);
-      headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-      headers.set("Access-Control-Allow-Headers", "Range, Accept-Encoding");
-      headers.set("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges");
+    
+    if (origin) {
+      try {
+        const originHost = new URL(origin).hostname;
+        const isAllowed = isAllowedHost(originHost, allowedUrls);
+        
+        if (isAllowed) {
+          headers.set("Access-Control-Allow-Origin", origin);
+          headers.set("Access-Control-Allow-Credentials", "true");
+        } else if (secure !== "true") {
+          headers.set("Access-Control-Allow-Origin", "*");
+        }
+      } catch {
+        if (secure !== "true") {
+          headers.set("Access-Control-Allow-Origin", "*");
+        }
+      }
     } else if (secure !== "true") {
       headers.set("Access-Control-Allow-Origin", "*");
-    } else {
-      return new NextResponse("Forbidden", { status: 403 });
     }
 
-    return new NextResponse(s3Response.Body, { status: 206, headers });
+    headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+    headers.set("Access-Control-Allow-Headers", "Range, Accept-Encoding");
+    headers.set("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, ETag");
+
+    return new NextResponse(s3Response.Body, { 
+      status: rangeHeader ? 206 : 200, 
+      headers 
+    });
   } catch (error) {
     console.error("Proxy video error:", error);
 
@@ -129,21 +173,34 @@ export async function GET(request) {
 
 export async function OPTIONS(request) {
   const origin = request.headers.get("origin");
-  const allowedHosts = [
+  const allowedUrls = [
     process.env.NEXT_PUBLIC_BASE_URL,
     process.env.NEXT_PUBLIC_CDN_URL,
-  ].map(normalizeUrl);
+  ].filter(Boolean);
 
-  const matchedOrigin = allowedHosts.find((host) =>
-    normalizeUrl(origin)?.startsWith(host)
-  );
+  const headers = new Headers();
+  
+  if (origin) {
+    try {
+      const originHost = new URL(origin).hostname;
+      const isAllowed = isAllowedHost(originHost, allowedUrls);
+      
+      if (isAllowed) {
+        headers.set("Access-Control-Allow-Origin", origin);
+        headers.set("Access-Control-Allow-Credentials", "true");
+      } else {
+        headers.set("Access-Control-Allow-Origin", "*");
+      }
+    } catch {
+      headers.set("Access-Control-Allow-Origin", "*");
+    }
+  } else {
+    headers.set("Access-Control-Allow-Origin", "*");
+  }
 
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": matchedOrigin || "*",
-      "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-      "Access-Control-Allow-Headers": "Range, Accept-Encoding",
-    },
-  });
+  headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "Range, Accept-Encoding");
+  headers.set("Access-Control-Max-Age", "86400");
+
+  return new NextResponse(null, { status: 204, headers });
 }
