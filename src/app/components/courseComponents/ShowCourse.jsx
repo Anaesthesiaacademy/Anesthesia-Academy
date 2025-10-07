@@ -142,11 +142,11 @@ export default function ShowCourse({ videos, session }) {
                   {video?.description || "No Description"}
                 </p>
               </div>
-              <div className="relative w-full aspect-video mt-7 p-3 shadow-lg rounded-md bg-white">
+            <div className="relative w-full aspect-video mt-7 p-3 shadow-lg rounded-md bg-white">
                 <video
                   ref={videoRef}
                   key={video?._id}
-                  preload="metadata"
+                  preload="auto"
                   className="w-full rounded-md h-full"
                   onContextMenu={(e) => e.preventDefault()}
                   controlsList="nodownload"
@@ -154,6 +154,7 @@ export default function ShowCourse({ videos, session }) {
                   title="Video Player"
                   allowFullScreen
                   controls
+                  playsInline
                   poster={
                     video?.thumbnail?.cloudId
                       ? `/api/upload/proxyImage?key=${encodeURIComponent(video?.thumbnail?.cloudId)}`
