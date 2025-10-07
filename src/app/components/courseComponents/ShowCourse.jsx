@@ -9,8 +9,6 @@ import { useRouter } from "next/navigation";
 export default function ShowCourse({ videos, session }) {
   const [video, setVideo] = useState(videos?.[0] || {});
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [videoError, setVideoError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
   const videoRef = useRef(null);
 
   console.log("video", video);
@@ -152,7 +150,7 @@ export default function ShowCourse({ videos, session }) {
                   className="w-full rounded-md h-full"
                   onContextMenu={(e) => e.preventDefault()}
                   controlsList="nodownload"
-                  src={`${process.env.NEXT_PUBLIC_CDN_URL}/api/upload/proxyImage?key=${encodeURIComponent(video?.video?.cloudId)}&secure=true&v=${video?._id}&t=${Date.now()}`}
+                  src={`${process.env.NEXT_PUBLIC_CDN_URL}/api/upload/proxyImage?key=${encodeURIComponent(video?.video?.cloudId)}&secure=true&v=${video?._id}`}
                   title="Video Player"
                   allowFullScreen
                   controls
