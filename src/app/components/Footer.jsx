@@ -31,7 +31,8 @@ export default function Footer() {
           </div>
         </div>
       </div>
-              <div className="text-[#66d2ff] " dir="ltr">
+      <div className="flex flex-col gap-4 justify-center items-center py-5 tex-sm md:text-base">
+                      <div className="text-[#66d2ff] " dir="ltr">
         Developed by
         <Link
           href="https://pixelpulse.online"
@@ -41,7 +42,6 @@ export default function Footer() {
           {"<"}Pixel Pulse{">"}
         </Link>
       </div>
-      <div className="flex justify-center items-center py-5 tex-sm md:text-base">
         <p className="text-white">© {new Date().getFullYear()} Anaesthesia Academy. All rights reserved.</p>
       </div>
       </div>
