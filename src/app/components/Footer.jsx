@@ -31,6 +31,16 @@ export default function Footer() {
           </div>
         </div>
       </div>
+              <div className="text-[#66d2ff] " dir="ltr">
+        Developed by
+        <Link
+          href="https://pixelpulse.online"
+          className="text-white hover:shadow-xl transition-shadow"
+        >
+          {" "}
+          {"<"}Pixel Pulse{">"}
+        </Link>
+      </div>
       <div className="flex justify-center items-center py-5 tex-sm md:text-base">
         <p className="text-white">© {new Date().getFullYear()} Anaesthesia Academy. All rights reserved.</p>
       </div>
