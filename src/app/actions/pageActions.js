@@ -17,155 +17,155 @@ const CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
 
 // courses
 
-export async function updateCourses() {
-  await connectToDatabase();
+// export async function updateCourses() {
+//   await connectToDatabase();
 
-  const { user } = await getServerSession(authOptions);
+//   const { user } = await getServerSession(authOptions);
 
-  if (user.role !== "admin") {
-    return {
-      success: false,
-      message: "User not authenticated",
-    };
-  }
+//   if (user.role !== "admin") {
+//     return {
+//       success: false,
+//       message: "User not authenticated",
+//     };
+//   }
 
-  try {
-    const response = await axios.get(
-      `https://www.googleapis.com/youtube/v3/playlists?part=snippet&channelId=${CHANNEL_ID}&key=${API_KEY}`
-    );
+//   try {
+//     const response = await axios.get(
+//       `https://www.googleapis.com/youtube/v3/playlists?part=snippet&channelId=${CHANNEL_ID}&key=${API_KEY}`
+//     );
 
-    const youtubePlaylists = response.data.items;
+//     const youtubePlaylists = response.data.items;
 
-    const storedCourses = await Course.find(
-      {},
-      "playlistId title description thumbnail count"
-    );
+//     const storedCourses = await Course.find(
+//       {},
+//       "playlistId title description thumbnail count"
+//     );
 
-    let addedCount = 0;
-    let updatedCount = 0;
-    let videosCount = 0;
+//     let addedCount = 0;
+//     let updatedCount = 0;
+//     let videosCount = 0;
 
-    for (const playlist of youtubePlaylists) {
-      const existingCourse = storedCourses.find(
-        (course) => course.playlistId === playlist.id
-      );
+//     for (const playlist of youtubePlaylists) {
+//       const existingCourse = storedCourses.find(
+//         (course) => course.playlistId === playlist.id
+//       );
 
-      const response2 = await axios.get(
-        `https://www.googleapis.com/youtube/v3/playlistItems?part=id&playlistId=${playlist.id}&key=${API_KEY}&maxResults=1`
-      );
+//       const response2 = await axios.get(
+//         `https://www.googleapis.com/youtube/v3/playlistItems?part=id&playlistId=${playlist.id}&key=${API_KEY}&maxResults=1`
+//       );
       
-      const totalVideos = response2.data.pageInfo.totalResults;
+//       const totalVideos = response2.data.pageInfo.totalResults;
             
-      if (existingCourse?.count !== totalVideos) {
-        await Course.updateOne(
-          { playlistId: playlist.id },
-          { $set: { count: totalVideos } }
-        );
-        videosCount++;
-      }
+//       if (existingCourse?.count !== totalVideos) {
+//         await Course.updateOne(
+//           { playlistId: playlist.id },
+//           { $set: { count: totalVideos } }
+//         );
+//         videosCount++;
+//       }
 
-      if (existingCourse) {
-        if (
-          existingCourse.title !== playlist.snippet.title ||
-          existingCourse.description !== playlist.snippet.description ||
-          existingCourse.thumbnail !== playlist.snippet.thumbnails.medium.url
-        ) {
-          await Course.updateOne(
-            { playlistId: playlist.id },
-            {
-              $set: {
-                title: playlist.snippet.title,
-                description: playlist.snippet.description,
-                thumbnail: playlist.snippet.thumbnails.medium.url,
-              },
-            }
-          );
-          updatedCount++;
-        }
-      } else {
-        await Course.create({
-          playlistId: playlist.id,
-          title: playlist.snippet.title,
-          description: playlist.snippet.description,
-          thumbnail: playlist.snippet.thumbnails.medium.url,
-          price: 0, // Default price
-        });
-        addedCount++;
-      }
-    }
+//       if (existingCourse) {
+//         if (
+//           existingCourse.title !== playlist.snippet.title ||
+//           existingCourse.description !== playlist.snippet.description ||
+//           existingCourse.thumbnail !== playlist.snippet.thumbnails.medium.url
+//         ) {
+//           await Course.updateOne(
+//             { playlistId: playlist.id },
+//             {
+//               $set: {
+//                 title: playlist.snippet.title,
+//                 description: playlist.snippet.description,
+//                 thumbnail: playlist.snippet.thumbnails.medium.url,
+//               },
+//             }
+//           );
+//           updatedCount++;
+//         }
+//       } else {
+//         await Course.create({
+//           playlistId: playlist.id,
+//           title: playlist.snippet.title,
+//           description: playlist.snippet.description,
+//           thumbnail: playlist.snippet.thumbnails.medium.url,
+//           price: 0, // Default price
+//         });
+//         addedCount++;
+//       }
+//     }
 
-    return {
-      success: true,
-      message: `✅ ${addedCount} new courses added, 🔄 ${updatedCount} courses updated, 🔄 ${videosCount} videos count updated`,
-    };
-  } catch (error) {
-    console.log(error);
-    return {
-      success: false,
-      message: "Error updating courses",
-    };
-  }
-}
+//     return {
+//       success: true,
+//       message: `✅ ${addedCount} new courses added, 🔄 ${updatedCount} courses updated, 🔄 ${videosCount} videos count updated`,
+//     };
+//   } catch (error) {
+//     console.log(error);
+//     return {
+//       success: false,
+//       message: "Error updating courses",
+//     };
+//   }
+// }
 
-export async function removeCourses() {
-  await connectToDatabase();
+// export async function removeCourses() {
+//   await connectToDatabase();
 
-  const { user } = await getServerSession(authOptions);
+//   const { user } = await getServerSession(authOptions);
 
-  if (user.role !== "admin") {
-    return {
-      success: false,
-      message: "User not authenticated",
-    };
-  }
+//   if (user.role !== "admin") {
+//     return {
+//       success: false,
+//       message: "User not authenticated",
+//     };
+//   }
 
-  try {
-    const response = await axios.get(
-      `https://www.googleapis.com/youtube/v3/playlists?part=snippet&channelId=${CHANNEL_ID}&key=${API_KEY}`
-    );
+//   try {
+//     const response = await axios.get(
+//       `https://www.googleapis.com/youtube/v3/playlists?part=snippet&channelId=${CHANNEL_ID}&key=${API_KEY}`
+//     );
 
-    const youtubePlaylists = response.data.items;
-    const youtubePlaylistIds = youtubePlaylists.map((playlist) => playlist.id);
+//     const youtubePlaylists = response.data.items;
+//     const youtubePlaylistIds = youtubePlaylists.map((playlist) => playlist.id);
 
-    const storedCourses = await Course.find({}, "playlistId").lean();;
+//     const storedCourses = await Course.find({}, "playlistId").lean();;
 
-    const coursesToDelete = storedCourses.filter(
-      (course) => !youtubePlaylistIds.includes(course.playlistId)
-    );
+//     const coursesToDelete = storedCourses.filter(
+//       (course) => !youtubePlaylistIds.includes(course.playlistId)
+//     );
 
-    if (coursesToDelete.length > 0) {
+//     if (coursesToDelete.length > 0) {
       
-      const { courseIdsToDelete, playlistIdsToDeleteConfirmed } = coursesToDelete.reduce(
-        (acc, course) => {
-          acc.courseIdsToDelete.push(course._id);
-          acc.playlistIdsToDeleteConfirmed.push(course.playlistId);
-          return acc;
-        },
-        { courseIdsToDelete: [], playlistIdsToDeleteConfirmed: [] }
-      );
+//       const { courseIdsToDelete, playlistIdsToDeleteConfirmed } = coursesToDelete.reduce(
+//         (acc, course) => {
+//           acc.courseIdsToDelete.push(course._id);
+//           acc.playlistIdsToDeleteConfirmed.push(course.playlistId);
+//           return acc;
+//         },
+//         { courseIdsToDelete: [], playlistIdsToDeleteConfirmed: [] }
+//       );
     
-      await Course.deleteMany({ playlistId: { $in: playlistIdsToDeleteConfirmed } });
+//       await Course.deleteMany({ playlistId: { $in: playlistIdsToDeleteConfirmed } });
     
-      await Order.updateMany(
-        { courseId: { $in: courseIdsToDelete } },
-        { $set: { status: "deleted" } }
-      );
-    }
+//       await Order.updateMany(
+//         { courseId: { $in: courseIdsToDelete } },
+//         { $set: { status: "deleted" } }
+//       );
+//     }
 
 
-    return {
-      success: true,
-      message: `${coursesToDelete.length} courses removed.`,
-      // removedCourses: coursesToDelete,
-    };
-  } catch (error) {
-    console.log(error);
-    return {
-      success: false,
-      message: "Error removing courses",
-    };
-  }
-}
+//     return {
+//       success: true,
+//       message: `${coursesToDelete.length} courses removed.`,
+//       // removedCourses: coursesToDelete,
+//     };
+//   } catch (error) {
+//     console.log(error);
+//     return {
+//       success: false,
+//       message: "Error removing courses",
+//     };
+//   }
+// }
 
 
 
