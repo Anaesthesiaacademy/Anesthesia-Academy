@@ -135,8 +135,7 @@ export default function Navbar({ session }) {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => router.push("/sign-up")}
-                    href="/sign-up"
+                    onClick={() => signIn("google")}
                     className={`px-6 py-3 bg-black text-white rounded-full font-semibold`}
                   >
                     Sign up
