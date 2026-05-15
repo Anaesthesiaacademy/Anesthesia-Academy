@@ -4,13 +4,15 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
 export const authOptions = {
-
   secret: process.env.SECRET,
   adapter: MongoDBAdapter(clientPromise),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      // This app only supports Google auth, so we can safely link
+      // returning users by their verified Google email address.
+      allowDangerousEmailAccountLinking: true,
     }),
   ],
   cookies: {
@@ -25,21 +27,7 @@ export const authOptions = {
     },
   },
   callbacks: {
-    async signIn({ user, account }) {
-      const client = await clientPromise;
-      const db = client.db();
-
-      // Check if the user already exists
-      const existingUser = await db.collection("users").findOne({ email: user.email });
-
-      if (existingUser) {
-        // Check if the user signed up with a different provider
-        if (existingUser.provider && existingUser.provider !== account.provider) {
-          throw new Error("Try signing in with a different account.");
-        }
-      }
-
-      // Allow sign-in
+    async signIn() {
       return true;
     },
     async session({ session, user }) {
