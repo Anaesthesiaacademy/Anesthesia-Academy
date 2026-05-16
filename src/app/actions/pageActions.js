@@ -453,6 +453,77 @@ export async function addVideo(data) {
   }
 }
 
+export async function addVideos({ courseId, videos }) {
+  await connectToDatabase();
+
+  const { user } = await getServerSession(authOptions);
+
+  if (user.role !== "admin") {
+    return {
+      success: false,
+      message: "User not authenticated",
+    };
+  }
+
+  if (!courseId || !Array.isArray(videos) || videos.length === 0) {
+    return {
+      success: false,
+      message: "Please select a course and at least one video",
+    };
+  }
+
+  const videosToCreate = videos.map((item) => ({
+    courseId,
+    title: item.title,
+    description: item.description || "",
+    video: item.video,
+    thumbnail: item.thumbnail,
+  }));
+
+  const hasInvalidVideo = videosToCreate.some(
+    (item) =>
+      !item.title?.trim() ||
+      !item.video?.url ||
+      !item.video?.cloudId ||
+      !item.thumbnail?.url ||
+      !item.thumbnail?.cloudId
+  );
+
+  if (hasInvalidVideo) {
+    return {
+      success: false,
+      message: "Every video needs a title, video file, and thumbnail",
+    };
+  }
+
+  try {
+    const res = await Video.insertMany(videosToCreate);
+
+    if (!res?.length) {
+      return {
+        success: false,
+        message: "Error creating videos, please try again",
+      };
+    }
+
+    await Course.updateOne(
+      { _id: courseId },
+      { $inc: { count: res.length } }
+    );
+
+    return {
+      success: true,
+      message: `✅ ${res.length} videos added successfully`,
+    };
+  } catch (error) {
+    console.log(error);
+    return {
+      success: false,
+      message: "Error adding videos",
+    };
+  }
+}
+
 export async function updateVideo({ videoId, ...data }) {
   const { user } = await getServerSession(authOptions);
 

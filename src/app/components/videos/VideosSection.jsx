@@ -4,10 +4,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getVideosById } from "../../actions/pageActions";
 import VideoCardAdmin from "./VideoCardAdmin";
 import AddVideo from "../courseComponents/AddVideo";
+import AddMultipleVideos from "../courseComponents/AddMultipleVideos";
 import { useState } from "react";
 
 export default function VideosSection({ courses }) {
   const [selectedCourse, setSelectedCourse] = useState(courses[0]?._id);
+  const [activeUploadTab, setActiveUploadTab] = useState("single");
 
   const queryClient = useQueryClient();
 
@@ -30,11 +32,46 @@ export default function VideosSection({ courses }) {
 
   return (
     <div className="mt-10 shadow-lg p-8">
-      <AddVideo
-        courses={courses}
-        queryClient={queryClient}
-        selectedCourse={selectedCourse}
-      />
+      <div className="mb-6">
+        <div className="max-w-xl mx-auto mb-4 grid grid-cols-2 rounded-lg border border-blue-200 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setActiveUploadTab("single")}
+            className={`p-3 font-semibold transition-colors ${
+              activeUploadTab === "single"
+                ? "bg-blue-600 text-white"
+                : "bg-white text-blue-700 hover:bg-blue-50"
+            }`}
+          >
+            Upload One Video
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveUploadTab("multiple")}
+            className={`p-3 font-semibold transition-colors ${
+              activeUploadTab === "multiple"
+                ? "bg-blue-600 text-white"
+                : "bg-white text-blue-700 hover:bg-blue-50"
+            }`}
+          >
+            Upload Multiple Videos
+          </button>
+        </div>
+
+        {activeUploadTab === "single" ? (
+          <AddVideo
+            courses={courses}
+            queryClient={queryClient}
+            selectedCourse={selectedCourse}
+          />
+        ) : (
+          <AddMultipleVideos
+            courses={courses}
+            queryClient={queryClient}
+            selectedCourse={selectedCourse}
+          />
+        )}
+      </div>
 
       <div className="w-full p-4 flex flex-col gap-2">
         <p className="text-2xl font-bold">Select Course</p>
